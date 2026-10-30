@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { templateRPC } from '../rpc'
 import { Card, useAction, useLoad } from '../ui'
 import '../template-service.css'
+import { TemplateScreenshots } from './TemplateScreenshots'
 
 type Mapping = { item_id: string; name: string; tag: string }
-type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; draft: Mapping | null }
+type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null }
 type Release = { revision: number; status: 'building' | 'deployed' | 'failed'; note: string; error: string; created_at: string }
 type Status = { revision: number; drafts: number; pending_events: number; pending_publications: number; deploy_mode: string; public_base: string; main_event_configured: boolean; release: Release | null; last_delivery: { last_error: string; attempts: number } | null }
 
@@ -47,10 +48,11 @@ export function TemplateServiceView() {
       {rows.loading && !rows.data && <p className="muted">正在读取模板…</p>}
       {rows.data && rows.data.items.length === 0 && <div className="empty"><p>暂无{filter === 'formal' ? '正式' : '未知'}模板。</p><p className="muted">客户端上传未知图标后会自动分配 U-编号；也可以在下方导入正式模板。</p></div>}
       <div className="template-service-grid">{rows.data?.items.map(row => <button type="button" key={row.id} aria-pressed={selected?.id === row.id} className={`template-service-tile ${selected?.id === row.id ? 'selected' : ''}`} onClick={() => choose(row)}>
-        <img src={`data:image/png;base64,${row.image_base64}`} alt={row.name || row.id} width={49} height={49} /><strong>{row.name || row.canonical_id}</strong><code>{row.id}</code><span className="muted">{row.hits} 次匹配{row.draft ? ' · 映射待发布' : row.kind === 'formal' ? ' · 已正式命名' : ' · 临时编号'}</span>
+        <img src={`data:image/png;base64,${row.image_base64}`} alt={row.name || row.id} width={49} height={49} /><strong>{row.name || row.canonical_id}</strong><code>{row.id}</code><span className="muted">{row.hits} 次匹配{row.draft ? ' · 映射待发布' : row.kind === 'formal' ? ' · 已正式命名' : ' · 临时编号'} · 原图 {row.screenshot_count ?? 0} 张</span>
       </button>)}</div>
       <div className="form-actions"><button type="button" className="ghost" disabled={!offset} onClick={() => setOffset(value => Math.max(0, value - 50))}>上一页</button><span className="muted">第 {offset / 50 + 1} 页</span><button type="button" className="ghost" disabled={(rows.data?.items.length ?? 0) < 50} onClick={() => setOffset(value => value + 50)}>下一页</button></div>
     </Card>
+    {selected && <TemplateScreenshots key={selected.id} identity={selected.id} />}
     {selected && selected.id.startsWith('U-') && <Card title={`映射 ${selected.id}`} extra={<button type="button" className="ghost" onClick={() => setSelected(null)}>关闭</button>}>
       <p className="muted">保存后先保留为草稿。发布时会替换模板识别 ID，并下发历史统计编号映射；原编号会作为别名保留。</p>
       <form className="stack" onSubmit={event => { event.preventDefault(); void action.run(async () => {

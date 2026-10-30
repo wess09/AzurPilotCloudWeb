@@ -16,6 +16,8 @@
 - 公开统计：`https://api.azurpilot.com/api/v3/get/commission` 和 `/api/v3/get/research`，HTTP GET，不携带管理员凭据。
 - 客户端模板上传：直连模板 API；资源从 `templates.azurpilot.com` Worker 下载。
 
+模板详情展示对应的完整 1280×720 奖励原图及物品位置，支持分页、打开原图和下载 PNG。原图通过模板服务的 `screenshots.list` / `screenshots.get` WebSocket 命令按需分块读取，校验 SHA-256 后在浏览器显示，不访问主服务器或公开截图资源。旧客户端只有小图的模板会提示等待新版客户端再次采集。
+
 管理员在首次 WebSocket 消息中发送 `{"type":"auth","token":"..."}`；令牌不放 URL。随后命令为 `{"id":"1","method":"state.subscribe","params":{}}`，响应使用相同 id，变化通过 `{"type":"event","topic":"state","data":...}` 推送。管理页面没有 REST 轮询。
 
 连接断开后自动重连和重新订阅，但不会自动重放写操作；断线中的操作需根据新状态核对，避免重复发布。两端管理员令牌保持一致，因此只需登录一次。
