@@ -1,0 +1,25 @@
+{
+  "name": "azurpilot-cloud-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev:admin": "vite --config vite.admin.config.ts",
+    "dev:stats": "vite --config vite.stats.config.ts",
+    "build:admin": "tsc && vite build --config vite.admin.config.ts",
+    "build:stats": "tsc && vite build --config vite.stats.config.ts",
+    "build": "npm run build:admin && npm run build:stats",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.1"
+  }
+}
