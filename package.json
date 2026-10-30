@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+	"test": "node --test tests/*.test.mjs",
     "dev:admin": "vite --config vite.admin.config.ts",
     "dev:stats": "vite --config vite.stats.config.ts",
     "build:admin": "tsc && vite build --config vite.admin.config.ts",

@@ -11,7 +11,7 @@ export function UpdatePolicyView() {
 
   useEffect(() => {
     if (load.data) setForce(load.data.force_update)
-  }, [load.data])
+  }, [load.data?.force_update])
 
   const save = () =>
     action.run(async () => {

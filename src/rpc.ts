@@ -117,7 +117,7 @@ export class RPCClient {
 
   async state<T>(): Promise<T> {
     if (this.snapshot !== undefined) return this.snapshot as T
-    if (!this.subscription) this.subscription = this.request<unknown>('state.subscribe').then(value => { this.snapshot = value; return value }).catch(error => { this.subscription = null; throw error })
+    if (!this.subscription) this.subscription = this.request<unknown>('state.subscribe').then(value => { this.snapshot = value; this.changed(); return value }).catch(error => { this.subscription = null; throw error })
     return await this.subscription as T
   }
 }
