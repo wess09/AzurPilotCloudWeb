@@ -3,7 +3,7 @@ import { PublicStatistics } from '../../src/views/PublicStatistics'
 import { JsonLd } from '../../src/components/seo/JsonLd'
 
 export const metadata: Metadata = {
-  title: '碧蓝航线科研产物统计与蓝图掉落分析',
+  title: { absolute: 'AzurPilot 碧蓝统计署 | 科研统计' },
   description:
     '碧蓝航线历期科研项目（一期至七期）真实产物掉落统计分析。提供决战方案舰与最高方案舰蓝图、天雷等装备设计图、心智单元的命中概率、单次产出及每小时产量排行。',
   keywords: [
@@ -23,8 +23,8 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'zh_CN',
-    siteName: 'AzurPilot 统计平台',
-    title: '碧蓝航线科研产物统计与蓝图掉落分析 · AzurPilot',
+    siteName: 'AzurPilot 碧蓝统计署',
+    title: 'AzurPilot 碧蓝统计署 | 科研统计',
     description:
       '真实样本科研统计：决战/最高方案舰蓝图掉率、彩装设计图产出与每小时收益排行。',
     url: 'https://stats.azurpilot.com/',
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary',
-    title: '碧蓝航线科研产物统计与蓝图掉落分析 · AzurPilot',
+    title: 'AzurPilot 碧蓝统计署 | 科研统计',
     description:
       '真实样本科研统计：决战/最高方案舰蓝图掉率、彩装设计图产出与每小时收益排行。',
     images: ['/logo.png']

@@ -3,7 +3,7 @@ import { Methodology } from '../../../src/views/Methodology'
 import { JsonLd } from '../../../src/components/seo/JsonLd'
 
 export const metadata: Metadata = {
-  title: '统计口径、计算规则与数据来源',
+  title: { absolute: 'AzurPilot 碧蓝统计署 | 统计口径' },
   description:
     'AzurPilot 统计平台计算规则与指标定义：有效样本门槛、同任务多产物命中去重、单次与每小时平均产量计算公式、额外奖励与大成功处理口径。',
   keywords: [
@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'zh_CN',
-    siteName: 'AzurPilot 统计平台',
-    title: '统计口径、计算规则与数据来源 · AzurPilot',
+    siteName: 'AzurPilot 碧蓝统计署',
+    title: 'AzurPilot 碧蓝统计署 | 统计口径',
     description:
       '详细说明 AzurPilot 统计指标计算公式、样本去重与极值统计规则，公开透明的数据处理标准。',
     url: 'https://stats.azurpilot.com/methodology/',
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary',
-    title: '统计口径、计算规则与数据来源 · AzurPilot',
+    title: 'AzurPilot 碧蓝统计署 | 统计口径',
     description:
       '详细说明 AzurPilot 统计指标计算公式、样本去重与极值统计规则，公开透明的数据处理标准。',
     images: ['/logo.png']

@@ -3,7 +3,7 @@ import { PublicStatistics } from '../../../src/views/PublicStatistics'
 import { JsonLd } from '../../../src/components/seo/JsonLd'
 
 export const metadata: Metadata = {
-  title: '军事委托产物与资源收益统计',
+  title: { absolute: 'AzurPilot 碧蓝统计署 | 军事委托统计' },
   description:
     '碧蓝航线日常委托、紧急委托与夜间委托产物统计。对比心智魔方、物资、石油、快速完成工具与舰娘经验的获取效率与极值分布。',
   keywords: [
@@ -22,8 +22,8 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'zh_CN',
-    siteName: 'AzurPilot 统计平台',
-    title: '军事委托产物与资源收益统计 · AzurPilot',
+    siteName: 'AzurPilot 碧蓝统计署',
+    title: 'AzurPilot 碧蓝统计署 | 军事委托统计',
     description:
       '全服真实委托记录：心智魔方、物资、石油等核心资源的每小时平均产出与概率分析。',
     url: 'https://stats.azurpilot.com/commission/',
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary',
-    title: '军事委托产物与资源收益统计 · AzurPilot',
+    title: 'AzurPilot 碧蓝统计署 | 军事委托统计',
     description:
       '全服真实委托记录：心智魔方、物资、石油等核心资源的每小时平均产出与概率分析。',
     images: ['/logo.png']

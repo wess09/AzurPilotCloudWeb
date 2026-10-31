@@ -15,8 +15,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://stats.azurpilot.com'),
   title: {
-    default: '碧蓝航线科研产物与军事委托统计 · AzurPilot',
-    template: '%s · AzurPilot'
+    default: 'AzurPilot 碧蓝统计署 | 科研统计',
+    template: 'AzurPilot 碧蓝统计署 | %s'
   },
   description:
     '碧蓝航线全服真实样本统计分析平台。提供科研项目蓝图掉率、定向装备设计图产出、军事委托资源收益（心智魔方、物资、石油）每小时效率与极值数据，基于真实完成记录计算。',
@@ -59,15 +59,15 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'zh_CN',
     url: 'https://stats.azurpilot.com/',
-    siteName: 'AzurPilot 统计平台',
-    title: '碧蓝航线科研与委托产物大数据统计 · AzurPilot',
+    siteName: 'AzurPilot 碧蓝统计署',
+    title: 'AzurPilot 碧蓝统计署 | 科研统计',
     description:
       '基于全服玩家真实样本的碧蓝航线科研与委托效率分析，实时对比蓝图、设计图及资源产出。',
     images: [{ url: '/logo.png', width: 512, height: 512, alt: 'AzurPilot Logo' }]
   },
   twitter: {
     card: 'summary',
-    title: '碧蓝航线科研与委托产物大数据统计 · AzurPilot',
+    title: 'AzurPilot 碧蓝统计署 | 科研统计',
     description:
       '基于全服玩家真实样本的碧蓝航线科研与委托效率分析，实时对比蓝图、设计图及资源产出。',
     images: ['/logo.png']
@@ -77,8 +77,8 @@ export const metadata: Metadata = {
 const websiteSchema = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  name: 'AzurPilot',
-  alternateName: '碧蓝航线大数据统计平台',
+  name: 'AzurPilot 碧蓝统计署',
+  alternateName: '碧蓝统计署',
   url: 'https://stats.azurpilot.com/',
   description: '碧蓝航线科研与军事委托真实样本统计分析平台',
   inLanguage: 'zh-CN',
