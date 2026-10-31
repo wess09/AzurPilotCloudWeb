@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { LinkProvider, type LinkComponentProps } from '@cloudflare/kumo/utils'
 import { Sidebar, useSidebar } from '@cloudflare/kumo/components/sidebar'
 import { Link } from '@cloudflare/kumo/components/link'
-import { Flask, Compass, BookOpen } from '@phosphor-icons/react'
+import { Flask, Compass, BookOpen, Waves } from '@phosphor-icons/react'
 import { Logo } from '../Logo'
 
 const AppLink = forwardRef<HTMLAnchorElement, LinkComponentProps>(
@@ -23,7 +23,7 @@ export function StatisticsShell({
 
 function Layout({children}:{children:React.ReactNode}) {
   const pathname = usePathname()
-  const scene = pathname === '/commission/' || pathname === '/commission' ? 'commission' : pathname === '/' ? 'research' : undefined
+  const scene = pathname === '/erosion/' || pathname === '/erosion' ? 'erosion' : pathname === '/commission/' || pathname === '/commission' ? 'commission' : pathname === '/' ? 'research' : undefined
   const { setOpenMobile } = useSidebar()
   useEffect(() => { setOpenMobile(false) }, [pathname,setOpenMobile])
   return (
@@ -54,6 +54,9 @@ function Layout({children}:{children:React.ReactNode}) {
                 icon={<Compass size={18} />}
               >
                 军事委托
+              </Sidebar.MenuButton>
+              <Sidebar.MenuButton href="/erosion/" active={scene === 'erosion'} icon={<Waves size={18} />}>
+                侵蚀 1
               </Sidebar.MenuButton>
             </Sidebar.Menu>
           </Sidebar.Group>
