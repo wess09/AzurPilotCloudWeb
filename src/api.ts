@@ -1,6 +1,6 @@
 import type { Announcement, Maintenance, MaintenanceSource, PublishRecord, PublishResult } from './types'
 import { mainRPC } from './rpc'
-export { ApiError, getToken, setToken, clearToken, setAuthErrorHandler } from './rpc'
+export { ApiError, getToken, setToken, clearToken, setAuthErrorHandler, isAdminPreview } from './rpc'
 
 type MainState = { announcement: Announcement | null; force_update: boolean; maintenances: Maintenance[] | null; maintenance_source: MaintenanceSource | null; publish_history: Record<string, PublishRecord> | null }
 const state = () => mainRPC.state<MainState>()

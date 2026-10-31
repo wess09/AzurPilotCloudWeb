@@ -1,4 +1,8 @@
-import { isAdminPreview } from './preview-mode'
+export function isAdminPreview(): boolean {
+  return process.env.NODE_ENV === 'development' && typeof window !== 'undefined' &&
+    ['127.0.0.1', 'localhost', '[::1]'].includes(window.location.hostname) &&
+    new URLSearchParams(window.location.search).get('preview') === '1'
+}
 
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message) }
