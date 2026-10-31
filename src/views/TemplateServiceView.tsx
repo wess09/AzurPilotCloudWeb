@@ -20,7 +20,7 @@ import { ItemIdentityFields } from '../components/ItemIdentityFields'
 import catalog from '../data/catalog.json'
 
 type Mapping = { item_id: string; name: string; tag: string }
-type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null }
+type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null; discarded?: boolean }
 type Release = { revision: number; status: 'building' | 'deployed' | 'failed'; note: string; error: string; created_at: string }
 type Status = { revision: number; drafts: number; pending_events: number; pending_publications: number; deploy_mode: string; public_base: string; main_event_configured: boolean; release: Release | null; last_delivery: { last_error: string; attempts: number } | null }
 
@@ -42,11 +42,12 @@ export function TemplateServiceView() {
   const [offset, setOffset] = useState(0)
   const [pulse, setPulse] = useState(0)
   const [selected, setSelected] = useState<Template | null>(null)
+  const [discarding, setDiscarding] = useState<Template | null>(null)
   const [mapping, setMapping] = useState<Mapping>({ item_id: '', name: '', tag: '' })
   const [formal, setFormal] = useState<Mapping>({ item_id: '', name: '', tag: '' })
   const [file, setFile] = useState<File | null>(null)
   const status = useLoad(() => templateRPC.state<Status>(), [pulse], 'templates')
-  const rows = useLoad(() => templateRPC.request<{ items: Template[] }>('templates.list', { limit: 50, offset, ...(filter ? { kind: filter } : {}) }), [filter, offset, pulse], 'templates')
+  const rows = useLoad(() => templateRPC.request<{ items: Template[] }>('templates.list', { limit: 50, offset, discarded: filter === 'discarded', ...(filter && filter !== 'discarded' ? { kind: filter } : {}) }), [filter, offset, pulse], 'templates')
   const releases = useLoad(() => templateRPC.request<{ items: Release[] }>('releases.list'), [pulse], 'templates')
   const formalItems = useLoad(loadFormalItems, [pulse], 'templates')
   const knownItems = useMemo(() => {
@@ -73,6 +74,13 @@ export function TemplateServiceView() {
     await templateRPC.request('mappings.save', { unknown_id: selected.id, ...mapping })
     refresh()
     return `${selected.id} → ${mapping.item_id} 已保存为草稿`
+  })
+  const changeDiscarded = (row: Template, discarded: boolean) => action.run(async () => {
+    await templateRPC.request('templates.discard', { identity_id: row.id, discarded })
+    setDiscarding(null)
+    setSelected(null)
+    refresh()
+    return discarded ? '已丢弃，等待发布' : '已恢复，等待发布'
   })
   const importTemplate = () => action.run(async () => {
     if (!file) throw new Error('请选择 PNG 模板')
@@ -105,14 +113,15 @@ export function TemplateServiceView() {
         {status.data.last_delivery?.last_error && <Banner variant="error">同步重试中：{status.data.last_delivery.last_error}</Banner>}
       </Card>}
       <Tabs value={tab} onValueChange={value => { setTab(value); setFile(null) }} tabs={[{ value: 'templates', label: '模板' }, { value: 'import', label: '导入模板' }, { value: 'releases', label: '发布记录' }]} indicatorClassName="motion-reduce:transition-none" />
-      {tab === 'templates' && <Card title="模板列表" extra={<Select aria-label="模板类型" value={filter} items={{ temporary: '未知模板', formal: '正式模板', '': '全部模板' }} onValueChange={value => { setFilter(value ?? ''); setOffset(0); setSelected(null) }} />}>
+      {tab === 'templates' && <Card title="模板列表" extra={<Select aria-label="模板类型" value={filter} items={{ temporary: '未知模板', formal: '正式模板', '': '全部模板', discarded: '已丢弃' }} onValueChange={value => { setFilter(value ?? ''); setOffset(0); setSelected(null) }} />}>
         {rows.data?.items.length ? <div className="admin-table-scroll"><Table>
-          <Table.Header><Table.Row><Table.Head>名称</Table.Head><Table.Head>编号</Table.Head><Table.Head>状态</Table.Head><Table.Head>匹配次数</Table.Head><Table.Head>原图</Table.Head></Table.Row></Table.Header>
+          <Table.Header><Table.Row><Table.Head>名称</Table.Head><Table.Head>编号</Table.Head><Table.Head>状态</Table.Head><Table.Head>匹配次数</Table.Head><Table.Head>原图</Table.Head><Table.Head>操作</Table.Head></Table.Row></Table.Header>
           <Table.Body>{rows.data.items.map(row => <Table.Row key={row.id}>
             <Table.Cell><div className="admin-template-name"><img src={`data:image/png;base64,${row.image_base64}`} alt="" width={49} height={49} /><Button variant="ghost" onClick={() => choose(row)}>{row.name || row.canonical_id || row.id}</Button></div></Table.Cell>
             <Table.Cell><code>{row.id}</code></Table.Cell>
-            <Table.Cell><Badge variant={row.draft ? 'warning' : row.kind === 'formal' ? 'success' : 'secondary'}>{row.draft ? '映射待发布' : row.kind === 'formal' ? '正式' : '未知'}</Badge></Table.Cell>
+            <Table.Cell><Badge variant={row.discarded ? 'secondary' : row.draft ? 'warning' : row.kind === 'formal' ? 'success' : 'secondary'}>{row.discarded ? '已丢弃' : row.draft ? '映射待发布' : row.kind === 'formal' ? '正式' : '未知'}</Badge></Table.Cell>
             <Table.Cell>{row.hits}</Table.Cell><Table.Cell>{row.screenshot_count ?? 0}</Table.Cell>
+            <Table.Cell><Button variant="ghost" disabled={action.running} onClick={() => row.discarded ? void changeDiscarded(row, false) : setDiscarding(row)}>{row.discarded ? '恢复' : '丢弃'}</Button></Table.Cell>
           </Table.Row>)}</Table.Body>
         </Table></div> : <Empty title={rows.loading ? '读取模板…' : rows.error ? '模板未加载' : '暂无模板'} />}
         {(offset > 0 || (rows.data?.items.length ?? 0) === 50) && <Pagination page={offset / 50 + 1} perPage={50} hasNextPage={(rows.data?.items.length ?? 0) === 50} setPage={page => { setOffset((page - 1) * 50); setSelected(null) }} labels={{ navigation: '模板分页', previousPage: '上一页模板', nextPage: '下一页模板' }} controls="simple" />}
@@ -138,13 +147,21 @@ export function TemplateServiceView() {
           <div className="admin-card-heading"><Dialog.Title>{selected?.name || selected?.id || '模板'}</Dialog.Title><Button variant="ghost" shape="square" aria-label="关闭模板" disabled={action.running} onClick={() => setSelected(null)}><X size={18} /></Button></div>
           {selected && <>
             <Text variant="secondary">{selected.id}</Text>
-            {selected.id.startsWith('U-') && <form className="admin-form" onSubmit={event => { event.preventDefault(); void saveMapping() }}>
+            {!selected.discarded && selected.id.startsWith('U-') && <form className="admin-form" onSubmit={event => { event.preventDefault(); void saveMapping() }}>
               <ItemIdentityFields value={mapping} items={knownItems} onChange={setMapping} />
               <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!mapping.item_id.trim() || !mapping.name.trim()}>保存映射草稿</Button></div>
             </form>}
             {action.message && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
             <TemplateScreenshots key={selected.id} identity={selected.id} />
           </>}
+        </Dialog>
+      </Dialog.Root>
+      <Dialog.Root open={discarding !== null} onOpenChange={open => { if (!open && !action.running) setDiscarding(null) }}>
+        <Dialog className="admin-dialog">
+          <Dialog.Title>丢弃模板</Dialog.Title>
+          <Dialog.Description>将 {discarding?.name || discarding?.id} 及其合并编号移出识别库，可在“已丢弃”列表恢复。</Dialog.Description>
+          {action.message?.kind === 'err' && <Banner variant="error">{action.message.text}</Banner>}
+          <div className="admin-actions admin-actions-end"><Button disabled={action.running} onClick={() => setDiscarding(null)}>取消</Button><Button variant="destructive" loading={action.running} onClick={() => { if (discarding) void changeDiscarded(discarding, true) }}>丢弃</Button></div>
         </Dialog>
       </Dialog.Root>
     </>

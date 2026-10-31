@@ -30,7 +30,7 @@ const history: Record<string, PublishRecord> = {
 }
 
 type Mapping = { item_id: string; name: string; tag: string }
-type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null }
+type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null; discarded?: boolean }
 const templates: Template[] = [
   { id: 'U-000128', canonical_id: 'U-000128', name: '埃吉尔蓝图', tag: 'blueprint', kind: 'temporary', hits: 283, image_base64: icons.agir, screenshot_count: 0, draft: { item_id: 'BlueprintAgir', name: '埃吉尔蓝图', tag: 'blueprint' } },
   { id: 'U-000129', canonical_id: 'U-000129', name: '白龙蓝图', tag: 'blueprint', kind: 'temporary', hits: 147, image_base64: icons.hakuryu, screenshot_count: 0, draft: null },
@@ -75,12 +75,22 @@ export async function previewRequest(source: 'main' | 'templates', method: strin
   } else {
     switch (method) {
       case 'templates.list': {
-        const filtered = templates.filter(row => !values.kind || row.kind === values.kind)
+        const filtered = templates.filter(row => Boolean(row.discarded) === Boolean(values.discarded) && (!values.kind || row.kind === values.kind))
         const offset = Number(values.offset ?? 0)
         return clone({ items: filtered.slice(offset, offset + Number(values.limit ?? 50)) })
       }
       case 'releases.list': return clone({ items: releases })
       case 'screenshots.list': return { items: [] }
+      case 'templates.discard': {
+        const row = templates.find(template => template.id === text('identity_id'))
+        if (!row) throw new Error('未找到预览模板')
+        for (const member of templates) if (member.canonical_id === row.canonical_id) {
+          member.discarded = Boolean(values.discarded)
+          if (member.discarded) member.draft = null
+        }
+        result = { discarded: row.discarded, published: false }
+        break
+      }
       case 'mappings.save': {
         const row = templates.find(template => template.id === text('unknown_id'))
         if (!row) throw new Error('未找到预览模板')
