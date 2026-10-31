@@ -1,28 +1,22 @@
-import { ChartBar } from '@phosphor-icons/react'
+import { Surface } from '@cloudflare/kumo/components/surface'
+import { Text } from '@cloudflare/kumo/components/text'
+
 export function Metric({
   title,
   value,
-  suffix,
-  note,
-  accent
+  suffix
 }: {
   title: string
   value: string
   suffix: string
-  note: string
-  accent?: boolean
 }) {
   return (
-    <div className={accent ? 'metric accent' : 'metric'}>
-      <h3>
-        {title}
-        {accent && <ChartBar size={14} />}
-      </h3>
-      <div className="metric-value">
+    <Surface className="metric">
+      <Text as="h3">{title}</Text>
+      <Text as="p" bold>
         {value}
-        <span>{suffix}</span>
-      </div>
-      <p>{note}</p>
-    </div>
+        <span className="metric-unit">{suffix}</span>
+      </Text>
+    </Surface>
   )
 }

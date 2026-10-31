@@ -44,26 +44,7 @@ export function useLoad<T>(loader: () => Promise<T>, deps: unknown[], source: 'm
   return { data, error, loading, reload: () => setTick((t) => t + 1) }
 }
 
-// 双色调云形标识：后层浅橙云 + 前层橙云，几何图形拼合保证小尺寸清晰。
-export function Logo({ size = 24 }: { size?: number }) {
-  const h = Math.round(size * 0.66)
-  return (
-    <svg width={size} height={h} viewBox="0 0 48 32" fill="none" aria-hidden="true">
-      {/* 后层云（浅橙） */}
-      <g fill="#FBAD41">
-        <circle cx="21" cy="10" r="6.5" />
-        <rect x="12" y="8" width="20" height="9" rx="4.5" />
-      </g>
-      {/* 前层云（橙），底部带一级台阶 */}
-      <g fill="#F6821F">
-        <circle cx="13" cy="20" r="7" />
-        <circle cx="25" cy="16" r="9.5" />
-        <rect x="7" y="19" width="30" height="8" rx="4" />
-        <rect x="7" y="24" width="37" height="4" rx="2" />
-      </g>
-    </svg>
-  )
-}
+export { Logo } from './components/Logo'
 
 // 一次性的操作状态提示。
 export function useAction(): {

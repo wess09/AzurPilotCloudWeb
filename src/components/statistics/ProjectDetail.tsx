@@ -1,127 +1,140 @@
 'use client'
-import { useEffect, useRef } from 'react'
 import { Button } from '@cloudflare/kumo/components/button'
+import { Dialog } from '@cloudflare/kumo/components/dialog'
 import { X } from '@phosphor-icons/react'
 import { durationName, format, type Group, type Scene } from '../../statistics'
 import { Metric } from './Metric'
+
 export function ProjectDetail({
-  group: g,
+  group,
   scene,
   unit,
   label,
   onClose
 }: {
-  group: Group
+  group: Group | null
   scene: Scene
   unit: string
   label: string
   onClose: () => void
 }) {
-  const dialog = useRef<HTMLDialogElement>(null)
-  useEffect(() => {
-    const el = dialog.current
-    el?.showModal()
-    return () => el?.close()
-  }, [])
   return (
-    <dialog
-      ref={dialog}
-      className="detail-dialog"
-      aria-labelledby="detail-title"
-      onCancel={onClose}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+    <Dialog.Root
+      open={Boolean(group)}
+      onOpenChange={(open) => {
+        if (!open) onClose()
       }}
     >
-      <div className="detail-header">
-        <div>
-          <span className="eyebrow">PROJECT DETAILS</span>
-          <h2 id="detail-title">{g.name}</h2>
+      <Dialog size="lg" className="detail-dialog">
+        <div className="detail-header">
+          <Dialog.Title>{group?.name || '项目明细'}</Dialog.Title>
+          <Dialog.Close
+            render={
+              <Button variant="ghost" shape="square" aria-label="关闭项目明细">
+                <X size={18} />
+              </Button>
+            }
+          />
         </div>
-        <button
-          className="icon-button"
-          aria-label="关闭项目明细"
-          onClick={onClose}
-        >
-          <X size={20} />
-        </button>
-      </div>
-      <p className="detail-subtitle">
-        {label} · {format(g.samples)} 次有效完成记录
-      </p>
-      <div className="detail-summary">
-        <Metric
-          title="每小时平均"
-          value={format(g.per_hour)}
-          suffix={`${unit}/时`}
-          note={`总任务耗时 ${format(g.total_seconds / 3600)} 小时`}
-        />
-        <Metric
-          title="单次平均"
-          value={format(g.average)}
-          suffix={unit}
-          note={`最小 ${format(g.min)} / 最大 ${format(g.max)}`}
-        />
-      </div>
-      <h3>奖励明细</h3>
-      <dl>
-        <div>
-          <dt>目标总产出</dt>
-          <dd>
-            {format(g.amount)} {unit}
-          </dd>
-        </div>
-        <div>
-          <dt>科研 BONUS（已包含）</dt>
-          <dd>
-            {format(g.extra_amount)} {unit}
-          </dd>
-        </div>
-        <div>
-          <dt>追赶 / 活动奖励（已包含）</dt>
-          <dd>
-            {format(g.other_amount)} {unit}
-          </dd>
-        </div>
-        {scene === 'commission' && (
+        <Dialog.Description>{label}</Dialog.Description>
+        {group && (
           <>
-            <div>
-              <dt>大成功样本</dt>
-              <dd>{format(g.success_samples)} 次</dd>
+            <div className="detail-summary">
+              <Metric
+                title="每小时平均"
+                value={format(group.per_hour)}
+                suffix={`${unit}/时`}
+              />
+              <Metric
+                title="单次平均"
+                value={format(group.average)}
+                suffix={unit}
+              />
             </div>
-            <div>
-              <dt>大成功记录产出（已包含）</dt>
-              <dd>
-                {format(g.success_amount)} {unit}
-              </dd>
-            </div>
+            <dl>
+              <div>
+                <dt>样本数</dt>
+                <dd>{format(group.samples)} 次</dd>
+              </div>
+              <div>
+                <dt>零掉落样本</dt>
+                <dd>{format(group.samples - group.occurrences)} 次</dd>
+              </div>
+              <div>
+                <dt>总产出</dt>
+                <dd>
+                  {format(group.amount)} {unit}
+                </dd>
+              </div>
+              <div>
+                <dt>最小 / 最大</dt>
+                <dd>
+                  {format(group.min)} / {format(group.max)}
+                </dd>
+              </div>
+              {scene === 'research' && (
+                <>
+                  <div>
+                    <dt>BONUS</dt>
+                    <dd>
+                      {format(group.extra_amount)} {unit}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>追赶 / 活动奖励</dt>
+                    <dd>
+                      {format(group.other_amount)} {unit}
+                    </dd>
+                  </div>
+                </>
+              )}
+              {scene === 'commission' && (
+                <>
+                  <div>
+                    <dt>大成功样本</dt>
+                    <dd>{format(group.success_samples)} 次</dd>
+                  </div>
+                  <div>
+                    <dt>大成功产出</dt>
+                    <dd>
+                      {format(group.success_amount)} {unit}
+                    </dd>
+                  </div>
+                </>
+              )}
+              <div>
+                <dt>任务时长</dt>
+                <dd>{group.duration ? durationName(group.duration) : '—'}</dd>
+              </div>
+              <div>
+                <dt>样本总耗时</dt>
+                <dd>{format(group.total_seconds / 3600)} 小时</dd>
+              </div>
+              <div>
+                <dt>消耗</dt>
+                <dd>
+                  {group.costs?.length
+                    ? group.costs
+                        .map((cost) => `${cost.name} × ${format(cost.amount)}`)
+                        .join('、')
+                    : '—'}
+                </dd>
+              </div>
+              {group.condition && (
+                <div>
+                  <dt>任务条件</dt>
+                  <dd>{group.condition}</dd>
+                </div>
+              )}
+            </dl>
           </>
         )}
-        <div>
-          <dt>零掉落样本</dt>
-          <dd>{format(g.samples - g.occurrences)} 次</dd>
+        <div className="detail-actions">
+          <Dialog.Close
+            render={<Button variant="secondary">关闭明细</Button>}
+          />
         </div>
-      </dl>
-      <h3>任务资料</h3>
-      <p>
-        {g.duration
-          ? durationName(g.duration)
-          : '当前为合并分组，或任务时长尚未收录'}
-      </p>
-      {g.condition && <p>{g.condition}</p>}
-      <p>
-        {g.costs?.length
-          ? g.costs.map((c) => `${c.name} × ${format(c.amount)}`).join('、')
-          : '无已收录的道具消耗；任务条件以游戏内说明为准。'}
-      </p>
-      {g.unknown_durations > 0 && (
-        <p className="error-text">存在时长未知的记录，每小时产量暂不计算。</p>
-      )}
-      <div className="detail-bottom">
-        <Button variant="secondary" onClick={onClose}>
-          关闭明细
-        </Button>
-      </div>
-    </dialog>
+      </Dialog>
+    </Dialog.Root>
   )
 }

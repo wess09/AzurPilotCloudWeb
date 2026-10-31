@@ -1,51 +1,53 @@
-# AzurPilot 数据观测站
+# 界面规范
 
-## 设计方向
+## 原文与用途
 
-使用 Cloudflare 控制台的产品语言：白色固定导航、浅灰工作区、清晰边界、橙色选择状态、蓝色数据图表。信息密度服务于项目比较，不使用营销大图、装饰性渐变或虚构数据。仅提供浅色模式。
-
-参考 [Cloudflare Kumo](https://github.com/cloudflare/kumo)、[Refactoring UI Skill](https://github.com/edisonmbli/refactoring-ui-skill) 的层级与间距约束，以及 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) 的设计文档组织方式。Kumo 为实际安装的组件库，使用它的 Button、语义令牌与 Phosphor 图标。
-
-## 内容与操作层级
-
-1. 主要内容：当前目标产物、项目收益比较、每小时平均产量。
-2. 次要内容：筛选与分组、有效样本、概率、单次收益、额外奖励。
-3. 辅助内容：数据来源、统计定义、更新时刻。
-
-主操作是选择产物。导出、刷新、重置、切换视图使用次要或文字按钮。橙色只用于当前选择与重点效率，排行榜同时给出排名、文字与数值，不单独通过颜色传达结果。
-
-## 令牌
-
-所有色值取自 Kumo / Tailwind 4 已有令牌，不另外生成品牌色。
-
-| 用途 | 令牌 |
+| 资源 | 用途 |
 | --- | --- |
-| 页面 / 表面 | `neutral-50` / `white` |
-| 正文 / 次级 / 辅助文本 | `neutral-900` / `neutral-600` / `neutral-500` |
-| 边界 | `neutral-200` |
-| 选中正文 / 选中背景 | `orange-700` / `orange-50` |
-| 品牌图形 / 排行首项 | `orange-500` |
-| 图表与链接 | `blue-700` |
-| 错误 | `red-800` / `red-50` |
+| [refactoring-ui](https://github.com/edisonmbli/refactoring-ui-skill/blob/main/skills/refactoring-ui/SKILL.md) | 按层级、间距、排版、颜色、深度、图像、收尾检查页面；已有组件库规则优先。 |
+| [Kumo design](https://github.com/cloudflare/kumo/blob/main/skills/kumo-design/SKILL.md) | 现成组件、14px 正文、字重、圆角、弹窗和交互规范。 |
+| [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) | 本文的设计文档结构。该目录没有 Cloudflare 主题，样式以 Kumo 为准。 |
+| [anti-ai-vibes](https://github.com/nagelanping/anti-ai-vibes-skill/blob/main/skills/anti-ai-vibes/SKILL.md) | 删除包装语和重复说明，保留统计含义与实际状态。 |
+| [说人话](https://github.com/MrGeDiao/shuorenhua/blob/main/SKILL.md) | 按用户指定范围删除宣传和多余说明，保留数值、单位、操作标签和错误。 |
 
-间距遵循 4px 基准，组内 8–12px，组间 20–28px，页面边距 16px（手机）或 36px（桌面）。标题 24–28px，正文与操作 13–14px，表格及辅助说明 11–12px。主数据采用 24–28px 和等宽数字，数字列右对齐。常规控件圆角 6px，弹窗 12px。仅浮层使用阴影。
+## 主题、颜色与排版
 
-## 页面结构
+Next.js App Router、React 19、Tailwind 4、Kumo 浅色主题。颜色直接使用 Kumo 语义令牌，不另设控件主题。正文、数据和交互文字为 14px，标题使用 Text 的 heading 变体，不调整字距，不用 700 字重。
 
-公开站：`/` 科研，`/commission/` 军事委托，`/methodology/` 统计口径。公开导航只展示这些功能，不出现管理后台、TM 或模板服务跳转。管理站使用独立构建和域名。
+Logo 和网站图标使用用户提供的 PNG 原图。公开站和管理站各自保存一份相同资源。
 
-流程：选择分类或单项 → 筛选区服、范围、期数、类型与时长 → 分组 → 比较图表和表格 → 查看任务消耗、条件与奖励明细。默认按每小时平均产量降序；未知时长的值保持为空并排在最后。
+## 组件
 
-桌面侧栏固定，手机通过菜单展开。375px 下页面本身不产生横向溢出；数据表在自身容器内横向滚动，另提供排行榜视图。弹窗使用原生 dialog，支持焦点管理、Escape 和返回原控件。尊重减少动态效果偏好。
+公开站所有交互控件使用 Kumo：Sidebar、Link、Button、Tabs、Combobox、Select、Input、Table、Pagination、Dialog。图表使用 Kumo Chart，内容使用 Surface、Text，空状态使用 Empty。仅绑定统计数据和业务操作，不实现原生控件或替代控件。
 
-## 数据与状态
+Dialog 始终挂载，由 open 控制显示。搜索、选择器、菜单和弹窗的键盘、焦点、浮层和收起行为由组件库处理。
 
-统计只能来自分析接口，加载、无样本、无时长、失败均明确展示，不使用演示数据补位。测试合成数据仅存在于 `tests/e2e/`。
+## 切换
 
-分类必须单位一致；单次任务内先合并匹配物品，再计算命中、极值和总量。零掉落计入分母，每小时产量按任务总耗时加权。科研 BONUS、追赶与活动奖励以及委托大成功产出分别说明，避免重复相加。
+实际检查 [Cloudflare 官网产品分类](https://www.cloudflare.com/products/) 和 [Kumo Tabs](https://kumo-ui.com/components/tabs/)。官网的选中背景与文字裁切随标签移动；使用 Kumo Tabs 现成的 200ms 滑动指示器，不复写控件。产物分类、分类/单项和表格/排行共用该组件。
 
-目录由 `tools/generate-catalog.py` 从本地 Lua、物品名称、图标模板及已固定来源的委托别名生成，保存来源 SHA-256。同名昼夜委托按客户端明确标识区分。歧义别名不参与猜测匹配，未知时长不计算效率。
+页面链接通过 Kumo LinkProvider 接入 Next Link，侧栏放在持久 layout。template 使用 React 19.3 ViewTransition 自带的新旧内容交叉淡入淡出，使用浏览器默认时长；查询参数变化不会重建 template。没有自制关键帧或额外动画依赖。减少动态效果时，指示器立即切换，页面只保留 125ms 透明度过渡。动画用途为衔接页面变化和指示选中状态，按 animate 的频率与用途流程检查。
 
-## 验证
+## 布局与深度
 
-浏览器测试覆盖 1280px 与 375px、排序和空值、单项查询、筛选、导出、项目明细、空样本、失败与独立管理登录。使用实际导出文件和生产 CSP 验证水合及路由。对前景与背景对比度、移动端溢出进行视觉复核；数字始终保留文本，不要求用户仅靠图形读数。
+CSS 只负责布局、间距、滚动和响应式排列。使用组件库默认尺寸、状态、圆角和阴影，不另写悬浮颜色过渡，不叠加边框阴影，不嵌套 LayerCard。
+
+## 文案
+
+保留产物选择、筛选、统计结果、图表、项目明细及必要状态。删除宣传段落、英文装饰标题、编号步骤、效率观察、重复导航和页脚说明。统计定义只在“统计口径”页保留一份简表。公开站没有管理后台、TM 或模板服务跳转。
+
+## 响应式与验证
+
+手机导航使用 Sidebar，自身容器内滚动的数据表使用 Table。检查 1280px 和 375px，页面本身不得横向溢出。浏览器验证搜索、筛选、排序、弹窗、导出、导航和页面切换。
+
+`tests/component-library.test.mjs` 禁止公开页面源码出现原生 button、input、select、textarea、dialog 和 a 控件。
+
+## 审查记录
+
+| 位置 | 规则 | 修改 |
+| --- | --- | --- |
+| 说明段落、效率观察、页脚 | Refactoring UI §2.1、§2.4 | 删除与数据、操作重复的文字。 |
+| 控件 | Kumo 组件文档 | 替换为库内实现。 |
+| 正文与表格 | Kumo content-text-size、font-tracking、font-weight | 使用库内字号和字重，不调整字距。 |
+| 弹窗 | Kumo dialog-rendering | 保持挂载，使用 open。 |
+| Logo | 用户要求 | 使用附件原图，删除原云形、锚形标识。 |

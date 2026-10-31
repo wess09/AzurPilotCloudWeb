@@ -100,6 +100,15 @@ async function mock(page: Page, mode: 'data' | 'empty' | 'error' = 'data') {
   )
 }
 
+async function choose(page: Page, label: string, option: string) {
+  await page.getByRole('combobox', { name: label, exact: true }).click()
+  await page.getByRole('option', { name: option, exact: true }).click()
+}
+async function navigate(page: Page, name: string) {
+  if (!(await page.getByRole('link', { name, exact: true }).isVisible()))
+    await page.getByRole('button', { name: '切换导航', exact: true }).click()
+  await page.getByRole('link', { name, exact: true }).click()
+}
 test('target-first comparison, sorting, reward details, exports and isolated public navigation', async ({
   page
 }, info) => {
@@ -118,6 +127,10 @@ test('target-first comparison, sorting, reward details, exports and isolated pub
     '科研产物分析'
   )
   await expect(page.locator('tbody tr')).toHaveCount(3)
+  await expect(page.locator('img[alt=AzurPilot]').first()).toHaveAttribute(
+    'src',
+    '/logo.png'
+  )
   await expect(page.locator('tbody tr').first()).toContainText('H-063-UL')
   await expect(
     page.locator('a[href*="admin"], a[href*="templates"], a[href*="/tm"]')
@@ -145,7 +158,7 @@ test('target-first comparison, sorting, reward details, exports and isolated pub
   await expect(page.getByRole('dialog')).toContainText('心智魔方 × 3')
   await expect(page.getByRole('dialog')).toContainText('零掉落样本')
   await page.getByRole('button', { name: '关闭明细', exact: true }).click()
-  await page.getByRole('button', { name: '单项查询', exact: true }).click()
+  await page.getByRole('tab', { name: '单项查询', exact: true }).click()
   await page.getByRole('combobox', { name: '搜索具体产物' }).fill('埃吉尔')
   await page.getByRole('option', { name: /蓝图：埃吉尔/ }).click()
   await expect(page).toHaveURL(/target=item%3ABlueprintAgir/)
@@ -156,39 +169,27 @@ test('target-first comparison, sorting, reward details, exports and isolated pub
   const csv = await readFile((await report.path())!, 'utf8')
   expect(csv).toContain('"样本数"')
   expect(csv).toContain('"魔方解析"')
-  await page.getByRole('button', { name: '排行榜视图' }).click()
-  await expect(page.locator('.ranking-list li')).toHaveCount(3)
-  await page
-    .getByRole('combobox', { name: '科研期数', exact: true })
-    .selectOption('4')
+  await page.getByRole('tab', { name: '排行榜', exact: true }).click()
+  await expect(page.locator('.ranking-list tbody tr')).toHaveCount(3)
+  await choose(page, '科研期数', '第 4 期')
   await expect(page).toHaveURL(/series=4/)
-  await page
-    .getByRole('combobox', { name: '任务时长', exact: true })
-    .selectOption('1800')
+  await choose(page, '任务时长', '30 分钟')
   await expect(page).toHaveURL(/duration=1800/)
   await page.reload()
   await expect(
     page.getByRole('combobox', { name: '科研期数', exact: true })
-  ).toHaveValue('4')
+  ).toHaveText('第 4 期')
   await expect(page.locator('.target-tag')).toHaveText('蓝图：埃吉尔')
-  await page
-    .locator('.scene-tabs')
-    .getByRole('link', { name: '军事委托' })
-    .click()
+  await navigate(page, '军事委托')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     '军事委托分析'
   )
   await expect(
-    page.getByRole('button', { name: '心智魔方', exact: true })
-  ).toHaveAttribute('aria-pressed', 'true')
+    page.getByRole('tab', { name: '心智魔方', exact: true })
+  ).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('tbody tr')).toHaveCount(3)
-  await page
-    .locator('.method-note')
-    .getByRole('link', { name: '了解更多' })
-    .click()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    '每一份数据，都有据可查'
-  )
+  await navigate(page, '统计口径')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('统计口径')
   expect(errors).toEqual([])
 })
 
@@ -197,13 +198,9 @@ test('no samples, custom dates and errors never display invented yield', async (
 }) => {
   await mock(page, 'empty')
   await page.goto('/commission/')
-  await expect(
-    page.getByRole('heading', { name: '当前条件下暂无公开样本' })
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: '暂无数据' })).toBeVisible()
   await expect(page.getByRole('button', { name: '导出数据' })).toBeDisabled()
-  await page
-    .getByRole('combobox', { name: '统计范围', exact: true })
-    .selectOption('custom')
+  await choose(page, '统计范围', '自定义日期')
   await expect(page.locator('.error-banner[role=alert]')).toContainText(
     '请选择有效的起止日期'
   )
