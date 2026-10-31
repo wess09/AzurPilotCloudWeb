@@ -30,6 +30,8 @@ import {
   format,
   sortGroups,
   targetsFor,
+  itemCatalogSchema,
+  type CatalogItem,
   type Analysis,
   type Group,
   type Scene,
@@ -76,7 +78,20 @@ export function PublicStatistics({ scene }: { scene: Scene }) {
   const [view, setView] = useState('table')
   const [page, setPage] = useState(0)
   const [detail, setDetail] = useState<Group | null>(null)
-  const targets = useMemo(() => targetsFor(scene), [scene])
+  const [itemCatalog, setItemCatalog] = useState<CatalogItem[]>(CATALOG.items)
+  const [catalogReady, setCatalogReady] = useState(false)
+  const targets = useMemo(() => targetsFor(scene, itemCatalog), [scene, itemCatalog])
+  useEffect(() => {
+    let alive = true
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 15000)
+    void fetch(`${API}/api/v3/get/items`, { signal: controller.signal }).then(async response => {
+      if (!response.ok) throw new Error('物品目录读取失败')
+      const body = itemCatalogSchema.parse(await response.json())
+      if (!controller.signal.aborted) setItemCatalog(body.items)
+    }).catch(() => {}).finally(() => { clearTimeout(timer); if (alive) setCatalogReady(true) })
+    return () => { alive = false; clearTimeout(timer); controller.abort() }
+  }, [tick])
   const update = (key: keyof Filters, value: string) => {
     setFilters((previous) => ({ ...previous, [key]: value }))
     setPage(0)
@@ -84,6 +99,7 @@ export function PublicStatistics({ scene }: { scene: Scene }) {
   }
 
   useEffect(() => {
+    if (!catalogReady) return
     const read = () => {
       const params = new URLSearchParams(window.location.search),
         next = defaults(scene)
@@ -114,7 +130,7 @@ export function PublicStatistics({ scene }: { scene: Scene }) {
     read()
     window.addEventListener('popstate', read)
     return () => window.removeEventListener('popstate', read)
-  }, [scene, targets])
+  }, [scene, targets, catalogReady])
 
   const rangeError =
     filters.days === 'custom' &&

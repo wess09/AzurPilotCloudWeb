@@ -16,11 +16,12 @@ import { templateRPC } from '../rpc'
 import { Card, useAction, useLoad } from '../ui'
 import { TemplateScreenshots } from './TemplateScreenshots'
 import { formatTime } from './AnnouncementView'
-import { ItemIdentityFields } from '../components/ItemIdentityFields'
+import { ItemIdentityFields, type ItemIdentity } from '../components/ItemIdentityFields'
+import { catalogMetadata, completeMetadata } from '../item-metadata'
 import catalog from '../data/catalog.json'
 
-type Mapping = { item_id: string; name: string; tag: string }
-type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null; discarded?: boolean }
+type Mapping = ItemIdentity
+type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null; discarded?: boolean; metadata?: ItemIdentity['metadata'] }
 type Release = { revision: number; status: 'building' | 'deployed' | 'failed'; note: string; error: string; created_at: string }
 type Status = { revision: number; drafts: number; pending_events: number; pending_publications: number; deploy_mode: string; public_base: string; main_event_configured: boolean; release: Release | null; last_delivery: { last_error: string; attempts: number } | null }
 
@@ -30,8 +31,13 @@ async function loadFormalItems(): Promise<Mapping[]> {
     const page = await templateRPC.request<{ items: Template[] }>('templates.list', { kind: 'formal', limit: 200, offset })
     for (const row of page.items) {
       const id = row.canonical_id || row.id
-      if (id && !id.startsWith('U-')) items.set(id, { item_id: id, name: row.name || id, tag: row.tag || '' })
+      if (id && !id.startsWith('U-')) items.set(id, { item_id: id, name: row.name || id, tag: row.tag || '', metadata: row.metadata })
     }
+    if (page.items.length < 200) break
+  }
+  for (let offset = 0; ; offset += 200) {
+    const page = await templateRPC.request<{ items: Mapping[] }>('items.list', { limit: 200, offset })
+    for (const item of page.items) items.set(item.item_id, { ...item, tag: items.get(item.item_id)?.tag ?? '' })
     if (page.items.length < 200) return Array.from(items.values())
   }
 }
@@ -52,8 +58,8 @@ export function TemplateServiceView() {
   const formalItems = useLoad(loadFormalItems, [pulse], 'templates')
   const knownItems = useMemo(() => {
     const items = new Map<string, Mapping>()
-    for (const item of catalog.items) items.set(item.id, { item_id: item.id, name: item.name, tag: '' })
-    for (const item of formalItems.data ?? []) items.set(item.item_id, item)
+    for (const item of catalog.items) items.set(item.id, { item_id: item.id, name: item.name, tag: '', metadata: catalogMetadata(item) })
+    for (const item of formalItems.data ?? []) items.set(item.item_id, { ...item, metadata: item.metadata ?? items.get(item.item_id)?.metadata })
     return Array.from(items.values()).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
   }, [formalItems.data])
   const action = useAction()
@@ -62,7 +68,8 @@ export function TemplateServiceView() {
   const reconnect = () => { templateRPC.close(); refresh() }
   const choose = (row: Template) => {
     setSelected(row)
-    setMapping(row.draft ?? { item_id: row.kind === 'formal' ? row.canonical_id : '', name: row.name, tag: row.tag })
+    const initial = row.draft ?? { item_id: row.kind === 'formal' ? row.canonical_id : '', name: row.name, tag: row.tag, metadata: row.metadata }
+    setMapping({ ...initial, metadata: initial.metadata ?? knownItems.find(item => item.item_id === initial.item_id)?.metadata })
   }
   const publish = () => action.run(async () => {
     const result = await templateRPC.request<{ request_id: number }>('publish', { note: '管理后台发布模板映射' })
@@ -130,7 +137,7 @@ export function TemplateServiceView() {
         <form className="admin-form admin-import-form" onSubmit={event => { event.preventDefault(); void importTemplate() }}>
           <ItemIdentityFields value={formal} items={knownItems} onChange={setFormal} />
           <Input label="PNG（49×49 或 96×96，≤256KB）" type="file" required accept="image/png" onChange={event => setFile(event.target.files?.[0] ?? null)} />
-          <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!formal.item_id.trim() || !formal.name.trim() || !file}>导入模板</Button></div>
+          <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!formal.item_id.trim() || !formal.name.trim() || !file || !completeMetadata(formal.metadata)}>导入模板</Button></div>
         </form>
       </Card>}
       {tab === 'releases' && <Card title="发布记录">
@@ -149,7 +156,7 @@ export function TemplateServiceView() {
             <Text variant="secondary">{selected.id}</Text>
             {!selected.discarded && selected.id.startsWith('U-') && <form className="admin-form" onSubmit={event => { event.preventDefault(); void saveMapping() }}>
               <ItemIdentityFields value={mapping} items={knownItems} onChange={setMapping} />
-              <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!mapping.item_id.trim() || !mapping.name.trim()}>保存映射草稿</Button></div>
+              <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!mapping.item_id.trim() || !mapping.name.trim() || !completeMetadata(mapping.metadata)}>保存映射草稿</Button></div>
             </form>}
             {action.message && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
             <TemplateScreenshots key={selected.id} identity={selected.id} />

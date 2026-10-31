@@ -1,5 +1,6 @@
 import type { Announcement, Maintenance, MaintenanceSource, PublishRecord } from '../types'
 import icons from './icons.json'
+import type { ItemIdentity } from '../components/ItemIdentityFields'
 
 const startedAt = Date.now()
 const time = (minutes = 0) => new Date(startedAt + minutes * 60000).toISOString()
@@ -29,8 +30,8 @@ const history: Record<string, PublishRecord> = {
   'ap-update-policy': { worker: 'ap-update-policy', content_hash: 'a4d792f31f8b54ce', status: 'success', created_at: time(-25) }
 }
 
-type Mapping = { item_id: string; name: string; tag: string }
-type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null; discarded?: boolean }
+type Mapping = ItemIdentity
+type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null; discarded?: boolean; metadata?: Mapping['metadata'] }
 const templates: Template[] = [
   { id: 'U-000128', canonical_id: 'U-000128', name: '埃吉尔蓝图', tag: 'blueprint', kind: 'temporary', hits: 283, image_base64: icons.agir, screenshot_count: 0, draft: { item_id: 'BlueprintAgir', name: '埃吉尔蓝图', tag: 'blueprint' } },
   { id: 'U-000129', canonical_id: 'U-000129', name: '白龙蓝图', tag: 'blueprint', kind: 'temporary', hits: 147, image_base64: icons.hakuryu, screenshot_count: 0, draft: null },
@@ -74,6 +75,7 @@ export async function previewRequest(source: 'main' | 'templates', method: strin
     }
   } else {
     switch (method) {
+      case 'items.list': return { items: templates.filter(row => row.kind === 'formal' && row.metadata).slice(Number(values.offset ?? 0), Number(values.offset ?? 0) + Number(values.limit ?? 200)).map(row => ({ item_id: row.canonical_id, name: row.name, tag: row.tag, metadata: row.metadata })) }
       case 'templates.list': {
         const filtered = templates.filter(row => Boolean(row.discarded) === Boolean(values.discarded) && (!values.kind || row.kind === values.kind))
         const offset = Number(values.offset ?? 0)
@@ -94,13 +96,13 @@ export async function previewRequest(source: 'main' | 'templates', method: strin
       case 'mappings.save': {
         const row = templates.find(template => template.id === text('unknown_id'))
         if (!row) throw new Error('未找到预览模板')
-        row.draft = { item_id: text('item_id'), name: text('name'), tag: text('tag') }
+        row.draft = { item_id: text('item_id'), name: text('name'), tag: text('tag'), metadata: values.metadata as Mapping['metadata'] }
         result = { saved: true }
         break
       }
-      case 'templates.import': templates.push({ id: text('item_id'), canonical_id: text('item_id'), name: text('name'), tag: text('tag'), kind: 'formal', hits: 0, image_base64: text('image_base64'), screenshot_count: 0, draft: null }); result = { imported: true }; break
+      case 'templates.import': templates.push({ id: text('item_id'), canonical_id: text('item_id'), name: text('name'), tag: text('tag'), metadata: values.metadata as Mapping['metadata'], kind: 'formal', hits: 0, image_base64: text('image_base64'), screenshot_count: 0, draft: null }); result = { imported: true }; break
       case 'publish':
-        for (const row of templates) if (row.draft) { row.canonical_id = row.draft.item_id; row.name = row.draft.name; row.tag = row.draft.tag; row.kind = 'formal'; row.draft = null }
+        for (const row of templates) if (row.draft) { row.canonical_id = row.draft.item_id; row.name = row.draft.name; row.tag = row.draft.tag; row.metadata = row.draft.metadata; row.kind = 'formal'; row.draft = null }
         releases.unshift({ revision: ++sequence, status: 'deployed', note: '预览发布', error: '', created_at: new Date().toISOString() })
         result = { request_id: sequence }
         break

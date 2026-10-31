@@ -151,8 +151,14 @@ export function csvExport(groups: Group[], scene: Scene, unit: string) {
       .join('\r\n')
   )
 }
-export function targetsFor(scene: Scene) {
-  const items = CATALOG.items.filter((i) => i.scenes.includes(scene))
+export type CatalogItem = typeof catalog.items[number] & { series?: number; version?: string; game_id?: string; faction?: string; subtype?: string }
+export const itemCatalogSchema = z.object({ items: z.array(z.object({
+  id: z.string(), name: z.string(), category: z.string(), unit: z.string(), rarity: z.number(),
+  aliases: z.array(z.string()).nullish().transform(value => value ?? []), scenes: z.array(z.string()),
+  series: z.number().optional(), version: z.string().optional(), game_id: z.string().optional(), faction: z.string().optional(), subtype: z.string().optional()
+})) })
+export function targetsFor(scene: Scene, available: CatalogItem[] = CATALOG.items) {
+  const items = available.filter((i) => i.scenes.includes(scene))
   return {
     items,
     categories: CATALOG.categories.filter((c) =>
