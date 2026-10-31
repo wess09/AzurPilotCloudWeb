@@ -42,7 +42,6 @@ code { font-size: 0.9em; overflow-wrap: anywhere; }
 .admin-template-metrics > div { display: grid; gap: 4px; }
 .admin-template-name { display: flex; align-items: center; gap: 8px; min-width: 160px; }
 .admin-template-name img { flex-shrink: 0; object-fit: contain; }
-.admin-mapping-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .admin-screenshots { display: grid; gap: 16px; min-width: 0; }
 .admin-screenshots svg { display: block; max-width: 100%; height: auto; }
 ::view-transition { pointer-events: none; }
@@ -59,5 +58,4 @@ code { font-size: 0.9em; overflow-wrap: anywhere; }
   .admin-summary-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .admin-page { gap: 20px; }
   .admin-template-metrics { gap: 12px; }
-  .admin-mapping-fields { grid-template-columns: minmax(0, 1fr); }
 }

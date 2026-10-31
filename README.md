@@ -70,3 +70,5 @@ uv run --project ../AzurLaneAutoScript python tools/generate-catalog.py `
 公告编辑时实时渲染草稿，也可切换查看已发布内容。Markdown 使用 react-markdown、remark-gfm 和 Tailwind Typography；链接、表格和任务清单使用 Kumo。支持标题、列表、引用、链接、图片、代码块、表格及任务清单；忽略原始 HTML，不执行脚本。公告仍通过原有 WebSocket 方法保存 content 字符串，客户端已有 Markdown 渲染。
 
 本地假数据预览：启动 `npm run dev:admin` 后打开 `http://127.0.0.1:5173/?preview=1&section=template-service`。预览无需登录，页头显示“预览数据”，包含公告、维护、更新策略、发布记录和模板。所有管理读写由内存适配器处理，不建立服务端连接，刷新后重置；退出预览不修改已有管理凭据。只在 development 且为 loopback 地址时启用，生产忽略 preview 参数。图标复用客户端现有素材，预览不提供完整奖励原图。
+
+映射草稿和模板导入默认选择已有物品，使用 Kumo Combobox 按名称或 ID 搜索。候选合并生成目录中的已知物品与通过模板 WebSocket 分页读取的全部正式模板，按 canonical_id 去重，选中后回填名称和服务端已有标签。游戏目录没有映射标签时保持为空，不将奖励分类写成上下文标签。目录之外的物品通过“新建物品”填写。

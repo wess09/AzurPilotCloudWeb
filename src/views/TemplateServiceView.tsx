@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Badge } from '@cloudflare/kumo/components/badge'
 import { Banner } from '@cloudflare/kumo/components/banner'
 import { Button } from '@cloudflare/kumo/components/button'
@@ -16,11 +16,25 @@ import { templateRPC } from '../rpc'
 import { Card, useAction, useLoad } from '../ui'
 import { TemplateScreenshots } from './TemplateScreenshots'
 import { formatTime } from './AnnouncementView'
+import { ItemIdentityFields } from '../components/ItemIdentityFields'
+import catalog from '../data/catalog.json'
 
 type Mapping = { item_id: string; name: string; tag: string }
 type Template = { id: string; canonical_id: string; name: string; tag: string; kind: 'formal' | 'temporary'; hits: number; image_base64: string; screenshot_count: number; draft: Mapping | null }
 type Release = { revision: number; status: 'building' | 'deployed' | 'failed'; note: string; error: string; created_at: string }
 type Status = { revision: number; drafts: number; pending_events: number; pending_publications: number; deploy_mode: string; public_base: string; main_event_configured: boolean; release: Release | null; last_delivery: { last_error: string; attempts: number } | null }
+
+async function loadFormalItems(): Promise<Mapping[]> {
+  const items = new Map<string, Mapping>()
+  for (let offset = 0; ; offset += 200) {
+    const page = await templateRPC.request<{ items: Template[] }>('templates.list', { kind: 'formal', limit: 200, offset })
+    for (const row of page.items) {
+      const id = row.canonical_id || row.id
+      if (id && !id.startsWith('U-')) items.set(id, { item_id: id, name: row.name || id, tag: row.tag || '' })
+    }
+    if (page.items.length < 200) return Array.from(items.values())
+  }
+}
 
 export function TemplateServiceView() {
   const [tab, setTab] = useState('templates')
@@ -34,9 +48,16 @@ export function TemplateServiceView() {
   const status = useLoad(() => templateRPC.state<Status>(), [pulse], 'templates')
   const rows = useLoad(() => templateRPC.request<{ items: Template[] }>('templates.list', { limit: 50, offset, ...(filter ? { kind: filter } : {}) }), [filter, offset, pulse], 'templates')
   const releases = useLoad(() => templateRPC.request<{ items: Release[] }>('releases.list'), [pulse], 'templates')
+  const formalItems = useLoad(loadFormalItems, [pulse], 'templates')
+  const knownItems = useMemo(() => {
+    const items = new Map<string, Mapping>()
+    for (const item of catalog.items) items.set(item.id, { item_id: item.id, name: item.name, tag: '' })
+    for (const item of formalItems.data ?? []) items.set(item.item_id, item)
+    return Array.from(items.values()).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+  }, [formalItems.data])
   const action = useAction()
   const refresh = () => setPulse(value => value + 1)
-  const errors = [...new Set([status.error, rows.error, releases.error].filter((error): error is string => Boolean(error)))]
+  const errors = [...new Set([status.error, rows.error, releases.error, formalItems.error].filter((error): error is string => Boolean(error)))]
   const reconnect = () => { templateRPC.close(); refresh() }
   const choose = (row: Template) => {
     setSelected(row)
@@ -98,11 +119,9 @@ export function TemplateServiceView() {
       </Card>}
       {tab === 'import' && <Card title="导入正式模板">
         <form className="admin-form admin-import-form" onSubmit={event => { event.preventDefault(); void importTemplate() }}>
-          <Input label="正式物品 ID" required maxLength={128} value={formal.item_id} onChange={event => setFormal({ ...formal, item_id: event.target.value })} />
-          <Input label="物品名称" required maxLength={128} value={formal.name} onChange={event => setFormal({ ...formal, name: event.target.value })} />
-          <Input label="标签（可选）" maxLength={32} value={formal.tag} onChange={event => setFormal({ ...formal, tag: event.target.value })} />
+          <ItemIdentityFields value={formal} items={knownItems} onChange={setFormal} />
           <Input label="PNG（49×49 或 96×96，≤256KB）" type="file" required accept="image/png" onChange={event => setFile(event.target.files?.[0] ?? null)} />
-          <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running}>导入模板</Button></div>
+          <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!formal.item_id.trim() || !formal.name.trim() || !file}>导入模板</Button></div>
         </form>
       </Card>}
       {tab === 'releases' && <Card title="发布记录">
@@ -120,12 +139,8 @@ export function TemplateServiceView() {
           {selected && <>
             <Text variant="secondary">{selected.id}</Text>
             {selected.id.startsWith('U-') && <form className="admin-form" onSubmit={event => { event.preventDefault(); void saveMapping() }}>
-              <div className="admin-mapping-fields">
-                <Input label="正式物品 ID" required maxLength={128} value={mapping.item_id} onChange={event => setMapping({ ...mapping, item_id: event.target.value })} />
-                <Input label="物品名称" required maxLength={128} value={mapping.name} onChange={event => setMapping({ ...mapping, name: event.target.value })} />
-                <Input label="标签（可选）" maxLength={32} value={mapping.tag} onChange={event => setMapping({ ...mapping, tag: event.target.value })} />
-              </div>
-              <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running}>保存映射草稿</Button></div>
+              <ItemIdentityFields value={mapping} items={knownItems} onChange={setMapping} />
+              <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!mapping.item_id.trim() || !mapping.name.trim()}>保存映射草稿</Button></div>
             </form>}
             {action.message && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
             <TemplateScreenshots key={selected.id} identity={selected.id} />
