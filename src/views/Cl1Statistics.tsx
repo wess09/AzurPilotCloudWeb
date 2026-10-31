@@ -17,7 +17,6 @@ const number = (value: number | undefined, digits = 0) => value === undefined ? 
 const percent = (value: number | undefined) => number(value === undefined ? undefined : value * 100, 2)
 
 const columns: { title: string; key: keyof Cl1Metrics; unit?: string; ratio?: boolean; digits?: number }[] = [
-  { title: '上报设备', key: 'devices', unit: '台' },
   { title: '战斗次数', key: 'battle_count', unit: '场' },
   { title: '出击轮数', key: 'battle_rounds', unit: '轮' },
   { title: '明石遭遇次数', key: 'akashi_encounters', unit: '次' },

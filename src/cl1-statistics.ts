@@ -2,7 +2,6 @@ import { z } from 'zod'
 
 const count = z.number().int().nonnegative()
 const metricsSchema = z.object({
-  devices: count,
   battle_count: count,
   battle_rounds: count,
   akashi_encounters: count,
