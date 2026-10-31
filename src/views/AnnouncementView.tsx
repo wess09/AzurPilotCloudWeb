@@ -6,6 +6,9 @@ import { Empty } from '@cloudflare/kumo/components/empty'
 import { Input, InputArea } from '@cloudflare/kumo/components/input'
 import { Link } from '@cloudflare/kumo/components/link'
 import { Table } from '@cloudflare/kumo/components/table'
+import { Tabs } from '@cloudflare/kumo/components/tabs'
+import { Text } from '@cloudflare/kumo/components/text'
+import { AnnouncementMarkdown } from '../components/AnnouncementMarkdown'
 import { api } from '../api'
 import type { PublishResult } from '../types'
 import { Card, PublishBadge, useAction, useLoad } from '../ui'
@@ -16,9 +19,13 @@ export function AnnouncementView() {
   const [content, setContent] = useState('')
   const [url, setUrl] = useState('')
   const [withdrawing, setWithdrawing] = useState(false)
+  const [preview, setPreview] = useState('draft')
   const action = useAction()
   const [lastPublish, setLastPublish] = useState<PublishResult | null>(null)
   const current = load.data?.announcement
+  const previewTitle = preview === 'draft' ? title : current?.title
+  const previewContent = preview === 'draft' ? content : current?.content
+  const previewUrl = preview === 'draft' ? url : current?.url
 
   useEffect(() => {
     if (current) {
@@ -58,7 +65,7 @@ export function AnnouncementView() {
         <Card title="编辑公告">
           <form className="admin-form" onSubmit={event => { event.preventDefault(); void publish() }}>
             <Input label="标题" value={title} onChange={event => setTitle(event.target.value)} required />
-            <InputArea label="内容" rows={6} value={content} onChange={event => setContent(event.target.value)} />
+            <InputArea label="内容（Markdown）" rows={12} value={content} onChange={event => setContent(event.target.value)} />
             <Input label="链接" type="url" value={url} onChange={event => setUrl(event.target.value)} placeholder="https://" />
             <div className="admin-actions">
               <Button type="submit" variant="primary" loading={action.running} disabled={!title.trim() || (!content.trim() && !url.trim())}>保存并发布</Button>
@@ -66,14 +73,16 @@ export function AnnouncementView() {
             </div>
           </form>
         </Card>
-        <Card title="当前公告">
-          {current ? <div className="admin-table-scroll"><Table><Table.Body>
-            <Table.Row><Table.Head>标题</Table.Head><Table.Cell>{current.title}</Table.Cell></Table.Row>
-            <Table.Row><Table.Head>内容</Table.Head><Table.Cell className="admin-pre">{current.content || '—'}</Table.Cell></Table.Row>
-            <Table.Row><Table.Head>链接</Table.Head><Table.Cell>{current.url ? <Link href={current.url} target="_blank" rel="noreferrer">{current.url}</Link> : '—'}</Table.Cell></Table.Row>
+        <Card title="预览" extra={<Tabs value={preview} onValueChange={setPreview} tabs={[{ value: 'draft', label: '草稿' }, { value: 'published', label: '已发布' }]} indicatorClassName="motion-reduce:transition-none" />}>
+          {previewTitle || previewContent || previewUrl ? <>
+            {previewTitle && <Text as="h3" variant="heading">{previewTitle}</Text>}
+            {previewContent && <AnnouncementMarkdown content={previewContent} />}
+            {previewUrl && <Link href={previewUrl} target="_blank" rel="noopener noreferrer">查看详情</Link>}
+          </> : <Empty title={load.loading ? '加载中…' : preview === 'draft' ? '暂无内容' : '无有效公告'} />}
+          {preview === 'published' && current && <div className="admin-table-scroll"><Table><Table.Body>
             <Table.Row><Table.Head>公告 ID</Table.Head><Table.Cell><code>{current.id}</code></Table.Cell></Table.Row>
             <Table.Row><Table.Head>更新时间</Table.Head><Table.Cell>{formatTime(current.updated_at)}</Table.Cell></Table.Row>
-          </Table.Body></Table></div> : <Empty title={load.loading ? '加载中…' : '无有效公告'} />}
+          </Table.Body></Table></div>}
         </Card>
       </div>
       <Dialog.Root open={withdrawing} onOpenChange={setWithdrawing}>

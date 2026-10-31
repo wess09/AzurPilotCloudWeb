@@ -82,7 +82,7 @@ export class RPCClient {
           if (pending) { clearTimeout(pending.timer); pending.resolve(message.data); this.pending.delete(message.id) }
         }
       }
-      socket.onerror = () => { clearTimeout(timeout); reject(new ApiError(0, 'NETWORK', '无法连接管理 WebSocket')) }
+      socket.onerror = () => { clearTimeout(timeout); reject(new ApiError(0, 'NETWORK', `${this.source === 'templates' ? '模板服务' : '主服务'}连接失败`)) }
       socket.onclose = () => {
         clearTimeout(timeout)
         reject(new ApiError(0, 'DISCONNECTED', '管理连接已断开'))

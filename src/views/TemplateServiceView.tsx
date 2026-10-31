@@ -36,6 +36,8 @@ export function TemplateServiceView() {
   const releases = useLoad(() => templateRPC.request<{ items: Release[] }>('releases.list'), [pulse], 'templates')
   const action = useAction()
   const refresh = () => setPulse(value => value + 1)
+  const errors = [...new Set([status.error, rows.error, releases.error].filter((error): error is string => Boolean(error)))]
+  const reconnect = () => { templateRPC.close(); refresh() }
   const choose = (row: Template) => {
     setSelected(row)
     setMapping(row.draft ?? { item_id: row.kind === 'formal' ? row.canonical_id : '', name: row.name, tag: row.tag })
@@ -67,7 +69,7 @@ export function TemplateServiceView() {
 
   return (
     <>
-      {status.error && <Banner variant="error">{status.error}</Banner>}
+      {errors.map(error => <Banner key={error} variant="error" description={error} action={<Button onClick={reconnect}>重连</Button>} />)}
       {action.message && !selected && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
       {status.data && <Card title="分发状态" extra={<div className="admin-actions"><Badge variant="secondary">版本 {status.data.revision}</Badge><Button onClick={refresh}>刷新</Button><Button variant="primary" loading={action.running} onClick={() => void publish()}>发布映射{status.data.drafts ? `（${status.data.drafts}）` : ''}</Button></div>}>
         <div className="admin-template-metrics">
@@ -83,7 +85,6 @@ export function TemplateServiceView() {
       </Card>}
       <Tabs value={tab} onValueChange={value => { setTab(value); setFile(null) }} tabs={[{ value: 'templates', label: '模板' }, { value: 'import', label: '导入模板' }, { value: 'releases', label: '发布记录' }]} indicatorClassName="motion-reduce:transition-none" />
       {tab === 'templates' && <Card title="模板列表" extra={<Select aria-label="模板类型" value={filter} items={{ temporary: '未知模板', formal: '正式模板', '': '全部模板' }} onValueChange={value => { setFilter(value ?? ''); setOffset(0); setSelected(null) }} />}>
-        {rows.error && <Banner variant="error">{rows.error}</Banner>}
         {rows.data?.items.length ? <div className="admin-table-scroll"><Table>
           <Table.Header><Table.Row><Table.Head>名称</Table.Head><Table.Head>编号</Table.Head><Table.Head>状态</Table.Head><Table.Head>匹配次数</Table.Head><Table.Head>原图</Table.Head></Table.Row></Table.Header>
           <Table.Body>{rows.data.items.map(row => <Table.Row key={row.id}>
@@ -92,7 +93,7 @@ export function TemplateServiceView() {
             <Table.Cell><Badge variant={row.draft ? 'warning' : row.kind === 'formal' ? 'success' : 'secondary'}>{row.draft ? '映射待发布' : row.kind === 'formal' ? '正式' : '未知'}</Badge></Table.Cell>
             <Table.Cell>{row.hits}</Table.Cell><Table.Cell>{row.screenshot_count ?? 0}</Table.Cell>
           </Table.Row>)}</Table.Body>
-        </Table></div> : <Empty title={rows.loading ? '读取模板…' : '暂无模板'} />}
+        </Table></div> : <Empty title={rows.loading ? '读取模板…' : rows.error ? '模板未加载' : '暂无模板'} />}
         {(offset > 0 || (rows.data?.items.length ?? 0) === 50) && <Pagination page={offset / 50 + 1} perPage={50} hasNextPage={(rows.data?.items.length ?? 0) === 50} setPage={page => { setOffset((page - 1) * 50); setSelected(null) }} labels={{ navigation: '模板分页', previousPage: '上一页模板', nextPage: '下一页模板' }} controls="simple" />}
       </Card>}
       {tab === 'import' && <Card title="导入正式模板">
@@ -105,14 +106,13 @@ export function TemplateServiceView() {
         </form>
       </Card>}
       {tab === 'releases' && <Card title="发布记录">
-        {releases.error && <Banner variant="error">{releases.error}</Banner>}
         {releases.data?.items.length ? <div className="admin-table-scroll"><Table>
           <Table.Header><Table.Row><Table.Head>版本</Table.Head><Table.Head>状态</Table.Head><Table.Head>备注</Table.Head><Table.Head>时间</Table.Head><Table.Head>错误</Table.Head></Table.Row></Table.Header>
           <Table.Body>{releases.data.items.map(release => <Table.Row key={release.revision}>
             <Table.Cell>{release.revision}</Table.Cell><Table.Cell><Badge variant={release.status === 'deployed' ? 'success' : release.status === 'failed' ? 'error' : 'warning'}>{release.status === 'deployed' ? '已发布' : release.status === 'failed' ? '失败，待重试' : '发布中'}</Badge></Table.Cell>
             <Table.Cell>{release.note || '—'}</Table.Cell><Table.Cell>{formatTime(release.created_at)}</Table.Cell><Table.Cell className="admin-pre">{release.error || '—'}</Table.Cell>
           </Table.Row>)}</Table.Body>
-        </Table></div> : <Empty title={releases.loading ? '加载中…' : '暂无发布记录'} />}
+        </Table></div> : <Empty title={releases.loading ? '加载中…' : releases.error ? '发布记录未加载' : '暂无发布记录'} />}
       </Card>}
       <Dialog.Root open={selected !== null} onOpenChange={open => { if (!open && !action.running) setSelected(null) }}>
         <Dialog size="xl" className="admin-dialog">

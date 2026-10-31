@@ -1,5 +1,6 @@
 @import '@cloudflare/kumo/styles/tailwind';
 @import 'tailwindcss';
+@plugin '@tailwindcss/typography';
 @source "./**/*.{ts,tsx}";
 @source "../admin/app/**/*.{ts,tsx}";
 @source "../node_modules/@cloudflare/kumo/dist/**/*.{js,mjs}";

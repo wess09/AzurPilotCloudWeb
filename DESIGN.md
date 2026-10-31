@@ -70,3 +70,9 @@ Sidebar 负责桌面及手机导航。按钮、输入、文本域、开关、选
 用户截图指出侧栏高度仅随菜单内容展开。Sidebar.Provider 使用明确的 h-dvh，内容区在自身容器内滚动，使 Sidebar.Footer 位于视口底部。统计站使用相同的布局修正。
 
 Sidebar.Footer 沿用库内单行结构，只放“退出登录”；“公开统计”置于 Content 中的独立导航组，避免在固定高度的 Footer 中堆叠两行。Next.js 开发浮标通过 devIndicators: false 关闭，避免遮挡底部导航。
+
+## 公告 Markdown
+
+公告编辑与预览并排，预览使用 Kumo Tabs 切换草稿和已发布版本。react-markdown 解析内容，remark-gfm 提供表格、删除线及任务清单，Tailwind Typography prose-sm 提供 14px 正文排版。链接、标题、表格和任务清单映射至 Kumo 组件，原始 HTML 忽略，URL 使用渲染库默认过滤。管理站 CSP 允许 HTTPS 公告图片，保留私有截图 blob 来源，不扩大脚本权限。
+
+模板页同一次连接失败只显示一条错误并提供库内重连按钮；连接失败不再显示“暂无模板”这种空数据结论。
