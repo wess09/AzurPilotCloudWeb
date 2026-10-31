@@ -2,6 +2,6 @@
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Cache-Control: no-cache
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src https://api.azurpilot.com; frame-ancestors 'none'; base-uri 'none'
-/assets/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' __NEXT_SCRIPT_HASHES__; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.azurpilot.com; frame-ancestors 'none'; base-uri 'none'
+/_next/static/*
   Cache-Control: public, max-age=31536000, immutable

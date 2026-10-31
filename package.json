@@ -4,23 +4,31 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-	"test": "node --test tests/*.test.mjs",
-    "dev:admin": "vite --config vite.admin.config.ts",
-    "dev:stats": "vite --config vite.stats.config.ts",
-    "build:admin": "tsc && vite build --config vite.admin.config.ts",
-    "build:stats": "tsc && vite build --config vite.stats.config.ts",
+    "test": "node --test tests/*.test.mjs",
+    "dev:admin": "next dev admin --port 5173",
+    "dev:stats": "next dev stats --port 5174",
+    "build:admin": "node tools/build.mjs admin",
+    "build:stats": "node tools/build.mjs stats",
     "build": "npm run build:admin && npm run build:stats",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@cloudflare/kumo": "^2.16.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "echarts": "^6.1.0",
+    "next": "^16.4.3",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.4",
-    "typescript": "~5.6.2",
-    "vite": "^6.0.1"
+    "@playwright/test": "^1.64.1",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.6.2"
   }
 }

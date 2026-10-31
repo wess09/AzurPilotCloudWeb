@@ -1,4 +1,10 @@
 node_modules/
+**/.next/
+**/out/
+**/next-env.d.ts
+**/*.tsbuildinfo
+test-results/
+playwright-report/
 dist/
 .env
 .tools/

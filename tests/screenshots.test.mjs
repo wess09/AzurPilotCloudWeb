@@ -36,5 +36,5 @@ test('rejects invalid or corrupted chunks and stops loading after cancellation',
 test('admin CSP permits private blob image previews and keeps backend connections on WS', async () => {
   const headers = await readFile(new URL('../admin/public/_headers', import.meta.url), 'utf8')
   assert.match(headers, /img-src[^;]*blob:/)
-  assert.match(headers, /connect-src wss:\/\/api\.azurpilot\.com wss:\/\/templates-api\.azurpilot\.com;/)
+  assert.match(headers, /connect-src 'self' wss:\/\/api\.azurpilot\.com wss:\/\/templates-api\.azurpilot\.com;/)
 })

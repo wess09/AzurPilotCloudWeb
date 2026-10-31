@@ -1,0 +1,2 @@
+/** Static exports retain the existing two independent Pages deployment targets. */
+export default { output: 'export', trailingSlash: true, poweredByHeader: false, images: { unoptimized: true }, turbopack: { root: import.meta.dirname } }
