@@ -65,4 +65,4 @@ uv run --project ../AzurLaneAutoScript python tools/generate-catalog.py `
 - 令牌只在首个认证帧传递，不放入 URL；管理操作不使用 HTTP 轮询。
 - 断线后重连订阅，不自动重放中断的写操作。模板完整原图仅经模板服务按需读取。
 
-管理站使用独立 Next.js 入口；浏览器加载后才初始化依赖 localStorage 的旧管理组件，避免静态导出时读取浏览器状态。
+管理站使用独立 Next.js 入口和 Kumo 组件。登录、侧栏、概览、公告、更新策略、维护计划、发布状态和模板管理统一使用组件库；侧栏保持挂载，页面使用 React ViewTransition 过渡。模板列表使用表格，映射及完整原图集中在详情弹窗。浏览器加载后才初始化依赖 localStorage 的管理会话。

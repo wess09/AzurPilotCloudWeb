@@ -1,224 +1,111 @@
 import { useState } from 'react'
+import { Badge } from '@cloudflare/kumo/components/badge'
+import { Banner } from '@cloudflare/kumo/components/banner'
+import { Button } from '@cloudflare/kumo/components/button'
+import { Dialog } from '@cloudflare/kumo/components/dialog'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Link } from '@cloudflare/kumo/components/link'
+import { Table } from '@cloudflare/kumo/components/table'
 import { api } from '../api'
 import { MAINTENANCE_SERVERS, SERVER_LABELS } from '../types'
 import type { Maintenance, MaintenanceServer } from '../types'
 import { Card, useAction, useLoad } from '../ui'
 import { formatTime } from './AnnouncementView'
 
-// ISO 时间 -> datetime-local 输入值（本地时区）。
 function toInput(iso: string | null): string {
   if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
-// datetime-local 输入值 -> 带时区的 RFC 3339（服务端要求带时区）。
-function fromInput(value: string): string {
-  return new Date(value).toISOString()
-}
-
-interface FormState {
-  name: string
-  startsAt: string
-  endsAt: string
-}
-
-function emptyForm(): FormState {
-  return { name: '', startsAt: '', endsAt: '' }
-}
-
-function ServerCard({
-  server,
-  plan,
-  onChanged,
-}: {
-  server: MaintenanceServer
-  plan: Maintenance | undefined
-  onChanged: () => void
-}) {
-  const [form, setForm] = useState<FormState>(emptyForm)
+function ServerCard({ server, plan, onChanged }: { server: MaintenanceServer; plan: Maintenance | undefined; onChanged: () => void }) {
+  const [form, setForm] = useState({ name: '', startsAt: '', endsAt: '' })
   const [editing, setEditing] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const action = useAction()
-
-  const startEdit = () => {
-    setForm({
-      name: plan?.name ?? '',
-      startsAt: toInput(plan?.starts_at ?? null),
-      endsAt: toInput(plan?.ends_at ?? null),
-    })
+  const edit = () => {
+    setForm({ name: plan?.name ?? '', startsAt: toInput(plan?.starts_at ?? null), endsAt: toInput(plan?.ends_at ?? null) })
     setEditing(true)
   }
-
-  const save = () =>
-    action.run(async () => {
-      const payload: { name: string; starts_at: string; ends_at?: string } = {
-        name: form.name.trim(),
-        starts_at: fromInput(form.startsAt),
-      }
-      if (form.endsAt) payload.ends_at = fromInput(form.endsAt)
-      await api.saveMaintenance(server, payload)
-      setEditing(false)
-      onChanged()
-      return `${SERVER_LABELS[server]} 维护计划已保存`
-    })
-
-  const remove = () =>
-    action.run(async () => {
-      if (!window.confirm(`确认删除 ${SERVER_LABELS[server]} 的维护计划？`)) return ''
-      await api.deleteMaintenance(server)
-      setEditing(false)
-      onChanged()
-      return `${SERVER_LABELS[server]} 维护计划已删除`
-    })
-
-  return (
-    <section className="card">
-      <header className="card-head">
-        <h2>
-          {SERVER_LABELS[server]} <code className="dim">{server}</code>
-        </h2>
-        {!editing && (
-          <button type="button" onClick={startEdit}>
-            {plan?.source === 'official' ? '人工覆盖' : plan ? '修改' : '设置'}
-          </button>
-        )}
-      </header>
-
-      {editing ? (
-        <form
-          className="stack"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void save()
-          }}
-        >
-          <label>
-            名称
-            <input
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder={SERVER_LABELS[server]}
-            />
-          </label>
-          <label>
-            开始时间（必填）
-            <input
-              type="datetime-local"
-              value={form.startsAt}
-              onChange={(e) => setForm({ ...form, startsAt: e.target.value })}
-            />
-          </label>
-          <label>
-            结束时间（可空，无法确定时留空）
-            <input
-              type="datetime-local"
-              value={form.endsAt}
-              onChange={(e) => setForm({ ...form, endsAt: e.target.value })}
-            />
-          </label>
-          {action.message && <p className={action.message.kind === 'ok' ? 'form-ok' : 'form-err'}>{action.message.text}</p>}
-          <div className="row">
-            <button type="submit" disabled={action.running || !form.name.trim() || !form.startsAt}>
-              {action.running ? '保存中…' : '保存'}
-            </button>
-            <button
-              type="button"
-              disabled={action.running}
-              onClick={() => {
-                setEditing(false)
-              }}
-            >
-              取消
-            </button>
-            {plan && plan.source !== 'official' && (
-              <button type="button" className="danger" disabled={action.running} onClick={() => void remove()}>
-                {server === 'cn' ? '删除人工覆盖' : '删除计划'}
-              </button>
-            )}
-          </div>
-        </form>
-      ) : (
-        <table className="detail">
-          <tbody>
-            <tr><th>来源</th><td>{plan?.source === 'official' ? <a href={plan.source_url} target="_blank" rel="noreferrer">国服官方公告</a> : plan ? '人工录入' : '—'}</td></tr>
-            <tr>
-              <th>名称</th>
-              <td>{plan?.name ?? '—'}</td>
-            </tr>
-            <tr>
-              <th>开始</th>
-              <td>{plan ? formatTime(plan.starts_at) : '—'}</td>
-            </tr>
-            <tr>
-              <th>结束</th>
-              <td>{plan?.ends_at ? formatTime(plan.ends_at) : plan ? '未确定' : '—'}</td>
-            </tr>
-          </tbody>
-        </table>
-      )}
-    </section>
-  )
-}
-
-// 维护计划管理：四个区服各一张卡片。
-export function MaintenanceView() {
-  const load = useLoad(() => api.listMaintenance(), [])
-  const source = useLoad(() => api.maintenanceSource(), [])
-
-  const action = useAction()
-  const sync = () => action.run(async () => {
-    try {
-      await api.syncMaintenance()
-      return '官方公告同步完成'
-    } finally {
-      source.reload()
-      load.reload()
-    }
+  const save = () => action.run(async () => {
+    const payload: { name: string; starts_at: string; ends_at?: string } = { name: form.name.trim(), starts_at: new Date(form.startsAt).toISOString() }
+    if (form.endsAt) payload.ends_at = new Date(form.endsAt).toISOString()
+    await api.saveMaintenance(server, payload)
+    setEditing(false)
+    onChanged()
+    return '维护计划已保存'
   })
-
-  const byServer = new Map<string, Maintenance>()
-  for (const m of load.data?.maintenances ?? []) {
-    byServer.set(m.server, m)
-  }
+  const remove = () => action.run(async () => {
+    await api.deleteMaintenance(server)
+    setRemoving(false)
+    onChanged()
+    return '维护计划已删除'
+  })
 
   return (
     <>
-      <Card title="国服官方维护公告" extra={
-        <button type="button" disabled={action.running || source.loading || source.data?.running} onClick={() => void sync()}>
-          {action.running ? '同步中…' : '立即同步'}
-        </button>
-      }>
-        <p className="muted">国服默认每 10 分钟检查官方公告。人工覆盖优先生效，删除覆盖后恢复官方计划。其他区服暂由人工录入。</p>
-        {source.data && <table className="detail"><tbody>
-          <tr><th>自动同步</th><td>{source.data.enabled ? `已开启 · 每 ${source.data.interval_seconds / 60} 分钟` : '已关闭'}</td></tr>
-          <tr><th>最新公告</th><td><a href={source.data.url} target="_blank" rel="noreferrer">{source.data.title || '查看官方公告页'}</a></td></tr>
-          <tr><th>最近检查</th><td>{source.data.checked_at ? formatTime(source.data.checked_at) : '尚未检查'}</td></tr>
-          <tr><th>最近成功</th><td>{source.data.synced_at ? formatTime(source.data.synced_at) : '尚未成功同步'}</td></tr>
-          <tr><th>同步状态</th><td>{source.data.error ? <span className="form-err">{source.data.error}（保留上次结果）</span> : source.data.synced_at ? '正常' : '等待同步'}</td></tr>
-        </tbody></table>}
-        {source.error && <p className="form-err">{source.error}</p>}
-        {action.message && <p className={action.message.kind === 'ok' ? 'form-ok' : 'form-err'}>{action.message.text}</p>}
+      <Card title={SERVER_LABELS[server]} extra={<Button onClick={edit}>{plan?.source === 'official' ? '人工覆盖' : plan ? '编辑' : '设置'}</Button>}>
+        <div className="admin-table-scroll"><Table><Table.Body>
+          <Table.Row><Table.Head>来源</Table.Head><Table.Cell>{plan?.source === 'official' ? <Link href={plan.source_url} target="_blank" rel="noreferrer">官方公告</Link> : plan ? '人工录入' : '—'}</Table.Cell></Table.Row>
+          <Table.Row><Table.Head>名称</Table.Head><Table.Cell>{plan?.name || '—'}</Table.Cell></Table.Row>
+          <Table.Row><Table.Head>开始</Table.Head><Table.Cell>{plan ? formatTime(plan.starts_at) : '—'}</Table.Cell></Table.Row>
+          <Table.Row><Table.Head>结束</Table.Head><Table.Cell>{plan?.ends_at ? formatTime(plan.ends_at) : plan ? '未确定' : '—'}</Table.Cell></Table.Row>
+        </Table.Body></Table></div>
+        {!editing && !removing && action.message && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
+        {plan && plan.source !== 'official' && <div className="admin-actions"><Button variant="secondary-destructive" disabled={action.running} onClick={() => setRemoving(true)}>{server === 'cn' ? '删除人工覆盖' : '删除计划'}</Button></div>}
       </Card>
-      <Card
-        title="区服维护计划"
-        extra={
-          <button type="button" onClick={load.reload} disabled={load.loading}>
-            刷新
-          </button>
-        }
-      >
-        <p className="muted">
-          已结束的安排仅供核对，不下发给客户端。未发布新的维护公告时，不推算下次维护时间。
-        </p>
-        {load.error && <p className="form-err">{load.error}</p>}
+      <Dialog.Root open={editing} onOpenChange={value => { if (!action.running) setEditing(value) }}>
+        <Dialog size="lg" className="admin-dialog">
+          <Dialog.Title>{SERVER_LABELS[server]}维护计划</Dialog.Title>
+          <form className="admin-form" onSubmit={event => { event.preventDefault(); void save() }}>
+            <Input label="名称" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} required />
+            <Input label="开始时间" type="datetime-local" value={form.startsAt} onChange={event => setForm({ ...form, startsAt: event.target.value })} required />
+            <Input label="结束时间（可选）" type="datetime-local" value={form.endsAt} min={form.startsAt || undefined} onChange={event => setForm({ ...form, endsAt: event.target.value })} />
+            {action.message?.kind === 'err' && <Banner variant="error">{action.message.text}</Banner>}
+            <div className="admin-actions admin-actions-end"><Button onClick={() => setEditing(false)} disabled={action.running}>取消</Button><Button type="submit" variant="primary" loading={action.running} disabled={!form.name.trim() || !form.startsAt}>保存</Button></div>
+          </form>
+        </Dialog>
+      </Dialog.Root>
+      <Dialog.Root open={removing} onOpenChange={value => { if (!action.running) setRemoving(value) }}>
+        <Dialog className="admin-dialog">
+          <Dialog.Title>删除维护计划</Dialog.Title>
+          <Dialog.Description>删除{SERVER_LABELS[server]}的人工维护计划？{server === 'cn' ? '删除后恢复官方计划。' : ''}</Dialog.Description>
+          {action.message?.kind === 'err' && <Banner variant="error">{action.message.text}</Banner>}
+          <div className="admin-actions admin-actions-end"><Button onClick={() => setRemoving(false)} disabled={action.running}>取消</Button><Button variant="destructive" loading={action.running} onClick={() => void remove()}>删除</Button></div>
+        </Dialog>
+      </Dialog.Root>
+    </>
+  )
+}
+
+export function MaintenanceView() {
+  const load = useLoad(() => api.listMaintenance(), [])
+  const source = useLoad(() => api.maintenanceSource(), [])
+  const action = useAction()
+  const sync = () => action.run(async () => {
+    try { await api.syncMaintenance(); return '官方公告同步完成' }
+    finally { source.reload(); load.reload() }
+  })
+  const byServer = new Map<string, Maintenance>()
+  for (const plan of load.data?.maintenances ?? []) byServer.set(plan.server, plan)
+
+  return (
+    <>
+      {load.error && <Banner variant="error">{load.error}</Banner>}
+      <Card title="国服官方公告" extra={<div className="admin-actions"><Button disabled={load.loading} onClick={load.reload}>刷新</Button><Button loading={action.running} disabled={source.loading || source.data?.running} onClick={() => void sync()}>立即同步</Button></div>}>
+        {source.data && <div className="admin-table-scroll"><Table><Table.Body>
+          <Table.Row><Table.Head>自动同步</Table.Head><Table.Cell><Badge variant={source.data.enabled ? 'success' : 'secondary'}>{source.data.enabled ? `每 ${source.data.interval_seconds / 60} 分钟` : '已关闭'}</Badge></Table.Cell></Table.Row>
+          <Table.Row><Table.Head>最新公告</Table.Head><Table.Cell><Link href={source.data.url} target="_blank" rel="noreferrer">{source.data.title || '官方公告'}</Link></Table.Cell></Table.Row>
+          <Table.Row><Table.Head>最近检查</Table.Head><Table.Cell>{source.data.checked_at ? formatTime(source.data.checked_at) : '—'}</Table.Cell></Table.Row>
+          <Table.Row><Table.Head>最近成功</Table.Head><Table.Cell>{source.data.synced_at ? formatTime(source.data.synced_at) : '—'}</Table.Cell></Table.Row>
+          <Table.Row><Table.Head>状态</Table.Head><Table.Cell>{source.data.error || (source.data.running ? '同步中' : source.data.synced_at ? '正常' : '等待同步')}</Table.Cell></Table.Row>
+        </Table.Body></Table></div>}
+        {source.error && <Banner variant="error">{source.error}</Banner>}
+        {action.message && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
       </Card>
-      <div className="grid">
-        {MAINTENANCE_SERVERS.map((server) => (
-          <ServerCard key={server} server={server} plan={byServer.get(server)} onChanged={load.reload} />
-        ))}
-      </div>
+      <div className="admin-columns">{MAINTENANCE_SERVERS.map(server => <ServerCard key={server} server={server} plan={byServer.get(server)} onChanged={load.reload} />)}</div>
     </>
   )
 }

@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { Button } from '@cloudflare/kumo/components/button'
+import { Input } from '@cloudflare/kumo/components/input'
+import { Surface } from '@cloudflare/kumo/components/surface'
+import { Text } from '@cloudflare/kumo/components/text'
+import { Banner } from '@cloudflare/kumo/components/banner'
 import { api, ApiError, getToken, setToken } from '../api'
 import { Logo } from '../ui'
 
-// 登录页：左右分屏（对照 Cloudflare 真实登录页）——
-// 左半白底表单，右半品牌橙面板。
-export function Login({ onLogin }: { onLogin: () => void }) {
+export function Login({ onLogin, errorMessage }: { onLogin: () => void; errorMessage?: string | null }) {
   const [token, setLocalToken] = useState(getToken())
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -18,57 +21,22 @@ export function Login({ onLogin }: { onLogin: () => void }) {
       onLogin()
     } catch (e) {
       const err = e as ApiError
-      if (err.status === 403) {
-        setError('服务端未启用管理接口（未配置 ADMIN_TOKEN）')
-      } else if (err.status === 401) {
-        setError('管理凭据无效，请核对 ADMIN_TOKEN')
-      } else {
-        setError(err.message)
-      }
+      setError(err.status === 403 ? '管理接口未启用' : err.status === 401 ? '管理凭据无效' : err.message)
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <div className="login-wrap">
-      <div className="login-pane">
-        <div className="login-corner">
-          <Logo size={28} />
-        </div>
-        <form
-          className="login-card"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void connect()
-          }}
-        >
-          <h1>AzurPilot 管理后台</h1>
-          <p className="muted">使用服务端配置的 ADMIN_TOKEN 登录，凭据仅保存在本浏览器。</p>
-          <label className="stack">
-            管理凭据
-            <input
-              type="password"
-              placeholder="ADMIN_TOKEN"
-              value={token}
-              onChange={(e) => setLocalToken(e.target.value)}
-              autoFocus
-            />
-          </label>
-          {error && <p className="form-err">{error}</p>}
-          <button type="submit" disabled={busy || !token.trim()}>
-            {busy ? '连接中…' : '登录'}
-          </button>
+    <main className="admin-login">
+      <Surface className="admin-login-card">
+        <div className="admin-brand"><Logo size={36} /><Text as="h1" variant="heading" size="lg">AzurPilot 管理后台</Text></div>
+        <form className="admin-form" onSubmit={event => { event.preventDefault(); void connect() }}>
+          <Input label="管理凭据" type="password" name="admin-token" autoComplete="current-password" value={token} onChange={event => setLocalToken(event.target.value)} autoFocus required />
+          {(error || errorMessage) && <Banner variant="error">{error || errorMessage}</Banner>}
+          <Button type="submit" variant="primary" loading={busy} disabled={!token.trim()}>登录</Button>
         </form>
-      </div>
-      <div className="login-side">
-        <div className="brand-tag">
-          <Logo size={30} />
-        </div>
-        <p className="eyebrow">AZURPILOT CLOUD</p>
-        <h2>一个控制台，管好全部云端状态。</h2>
-        <p>公告、更新策略、区服维护与静态发布，都在这里完成。</p>
-      </div>
-    </div>
+      </Surface>
+    </main>
   )
 }

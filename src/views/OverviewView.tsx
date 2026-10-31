@@ -1,113 +1,51 @@
+import { Badge } from '@cloudflare/kumo/components/badge'
+import { Banner } from '@cloudflare/kumo/components/banner'
+import { Button } from '@cloudflare/kumo/components/button'
+import { Empty } from '@cloudflare/kumo/components/empty'
+import { Table } from '@cloudflare/kumo/components/table'
+import { Text } from '@cloudflare/kumo/components/text'
 import { api } from '../api'
-import type { ReactNode } from 'react'
-import type { Announcement, Maintenance, PublishRecord } from '../types'
+import type { Maintenance, PublishRecord } from '../types'
 import { SERVER_LABELS, MAINTENANCE_SERVERS } from '../types'
 import { Card, useLoad } from '../ui'
 import { formatTime } from './AnnouncementView'
 
-function StatCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="card stat">
-      <p className="stat-title">{title}</p>
-      <div className="stat-body">{children}</div>
-    </section>
-  )
-}
-
-// 概览页：登录后的落地页，一屏看清公告 / 更新策略 / 维护 / 发布状态。
 export function OverviewView({ onNavigate }: { onNavigate: (section: string) => void }) {
   const announcement = useLoad(() => api.getAnnouncement(), [])
   const policy = useLoad(() => api.getUpdatePolicy(), [])
   const maintenance = useLoad(() => api.listMaintenance(), [])
   const publish = useLoad(() => api.publishStatus(), [])
-
-  const a: Announcement | null = announcement.data?.announcement ?? null
-  const force = policy.data?.force_update ?? false
-  const plans = (maintenance.data?.maintenances ?? []).filter((m: Maintenance) =>
-    MAINTENANCE_SERVERS.includes(m.server as (typeof MAINTENANCE_SERVERS)[number]) && (!m.ends_at || new Date(m.ends_at) >= new Date()),
+  const current = announcement.data?.announcement
+  const plans = (maintenance.data?.maintenances ?? []).filter((plan: Maintenance) =>
+    MAINTENANCE_SERVERS.includes(plan.server as (typeof MAINTENANCE_SERVERS)[number]) && (!plan.ends_at || new Date(plan.ends_at) >= new Date())
   )
-  const history = publish.data?.publish_history ?? {}
-  const records: PublishRecord[] = Object.values(history).sort(
-    (x, y) => new Date(y.created_at).getTime() - new Date(x.created_at).getTime(),
-  )
+  const records: PublishRecord[] = Object.values(publish.data?.publish_history ?? {}).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
   return (
     <>
-      <div className="stat-grid">
-        <StatCard title="公告">
-          {a ? (
-            <>
-              <p className="stat-main">{a.title}</p>
-              <p className="muted">{a.id} · {formatTime(a.updated_at)}</p>
-            </>
-          ) : (
-            <>
-              <p className="stat-main dim">无有效公告</p>
-              <p className="muted">客户端显示 announcement: null</p>
-            </>
-          )}
-        </StatCard>
-        <StatCard title="更新策略">
-          <p className="stat-main">
-            <span className={force ? 'pill pill-err' : 'pill pill-ok'}>{force ? '强制更新开启' : '正常（不强更）'}</span>
-          </p>
-          <p className="muted">force_update = {String(force)}</p>
-        </StatCard>
-        <StatCard title="维护计划">
-          {plans.length > 0 ? (
-            <>
-              <p className="stat-main">{plans.length} 个区服有安排</p>
-              <p className="muted">
-                {plans.map((m) => SERVER_LABELS[m.server as keyof typeof SERVER_LABELS] ?? m.server).join('、')}
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="stat-main dim">无维护安排</p>
-              <p className="muted">cn / en / jp / tw 均为空</p>
-            </>
-          )}
-        </StatCard>
+      {[announcement.error, policy.error, maintenance.error, publish.error].filter(Boolean).map((error, index) => <Banner key={index} variant="error">{error}</Banner>)}
+      <div className="admin-summary-grid">
+        <Card title="公告">
+          <Text>{announcement.loading && !announcement.data ? '加载中…' : current?.title || '无有效公告'}</Text>
+          {current && <Text variant="secondary">{formatTime(current.updated_at)}</Text>}
+        </Card>
+        <Card title="更新策略">
+          {policy.data ? <Badge variant={policy.data.force_update ? 'warning' : 'success'}>{policy.data.force_update ? '强制更新' : '正常更新'}</Badge> : <Text variant="secondary">{policy.loading ? '加载中…' : '—'}</Text>}
+        </Card>
+        <Card title="维护计划">
+          <Text>{maintenance.data ? `${plans.length} 个区服` : maintenance.loading ? '加载中…' : '—'}</Text>
+          {plans.length > 0 && <Text variant="secondary">{plans.map(plan => SERVER_LABELS[plan.server as keyof typeof SERVER_LABELS] ?? plan.server).join('、')}</Text>}
+        </Card>
       </div>
-
-      <Card
-        title="最近发布"
-        extra={
-          <button type="button" className="ghost" onClick={() => onNavigate('publish')}>
-            查看发布状态
-          </button>
-        }
-      >
-        {records.length > 0 ? (
-          <table className="detail">
-            <thead>
-              <tr>
-                <th>Worker</th>
-                <th>状态</th>
-                <th>内容摘要</th>
-                <th>时间</th>
-              </tr>
-            </thead>
-            <tbody>
-              {records.map((r) => (
-                <tr key={r.worker}>
-                  <td>{r.worker}</td>
-                  <td>
-                    <span className={r.status === 'success' ? 'pill pill-ok' : r.status === 'failed' ? 'pill pill-err' : 'pill pill-warn'}>
-                      {r.status === 'success' ? '成功' : r.status === 'failed' ? '失败' : '仅本地'}
-                    </span>
-                  </td>
-                  <td>
-                    <code>{r.content_hash || '—'}</code>
-                  </td>
-                  <td>{formatTime(r.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <p className="muted">还没有发布记录。</p>
-        )}
+      <Card title="最近发布" extra={<Button variant="ghost" onClick={() => onNavigate('publish')}>查看全部</Button>}>
+        {records.length ? <div className="admin-table-scroll"><Table>
+          <Table.Header><Table.Row><Table.Head>Worker</Table.Head><Table.Head>状态</Table.Head><Table.Head>内容摘要</Table.Head><Table.Head>时间</Table.Head></Table.Row></Table.Header>
+          <Table.Body>{records.map(record => <Table.Row key={record.worker}>
+            <Table.Cell>{record.worker}</Table.Cell>
+            <Table.Cell><Badge variant={record.status === 'success' ? 'success' : record.status === 'failed' ? 'error' : 'warning'}>{record.status === 'success' ? '成功' : record.status === 'failed' ? '失败' : '仅本地'}</Badge></Table.Cell>
+            <Table.Cell><code>{record.content_hash || '—'}</code></Table.Cell><Table.Cell>{formatTime(record.created_at)}</Table.Cell>
+          </Table.Row>)}</Table.Body>
+        </Table></div> : <Empty title={publish.loading ? '加载中…' : '暂无发布记录'} />}
       </Card>
     </>
   )

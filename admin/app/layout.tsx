@@ -9,7 +9,7 @@ export default function Layout({
   children
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" data-mode="light" data-theme="kumo">
       <body>{children}</body>
     </html>
   )

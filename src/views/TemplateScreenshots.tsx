@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react'
+import { Banner } from '@cloudflare/kumo/components/banner'
+import { Empty } from '@cloudflare/kumo/components/empty'
+import { Link } from '@cloudflare/kumo/components/link'
+import { Pagination } from '@cloudflare/kumo/components/pagination'
+import { Tabs } from '@cloudflare/kumo/components/tabs'
+import { Text } from '@cloudflare/kumo/components/text'
 import { templateRPC } from '../rpc'
 import { readScreenshot } from '../screenshots'
-import { Card, useLoad } from '../ui'
+import { useLoad } from '../ui'
+import { formatTime } from './AnnouncementView'
 
 type Screenshot = { sha256: string; scene: string; created_at: string; width: number; height: number; bounds: [number, number, number, number] }
+const keyFor = (row: Screenshot) => `${row.sha256}:${row.bounds.join('-')}`
 
 export function TemplateScreenshots({ identity }: { identity: string }) {
   const [offset, setOffset] = useState(0)
@@ -13,6 +21,7 @@ export function TemplateScreenshots({ identity }: { identity: string }) {
   const rows = useLoad(() => templateRPC.request<{ items: Screenshot[] }>('screenshots.list', { identity_id: identity, limit: 10, offset }), [identity, offset], 'templates')
   const selected = chosen ?? rows.data?.items[0]
   const sha256 = selected?.sha256
+
   useEffect(() => {
     const controller = new AbortController()
     let objectUrl = ''
@@ -23,22 +32,32 @@ export function TemplateScreenshots({ identity }: { identity: string }) {
     }).catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message) })
     return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl) }
   }, [sha256])
-  return <Card title={`原始截图 · ${identity}`}>
-    {rows.error && <p role="alert" className="banner">{rows.error}</p>}
-    {error && <p role="alert" className="banner">{error}</p>}
-    {!rows.loading && rows.data?.items.length === 0 && <p className="muted">尚未收到原图。旧版本只上传了小图；客户端更新后，再次遇到这个未知物品时会自动补传完整截图。</p>}
-    <div className="form-actions">{rows.data?.items.map((row, index) => <button key={`${row.sha256}-${row.bounds.join('-')}`} type="button" className="ghost" aria-pressed={selected === row} onClick={() => setChosen(row)}>截图 {offset + index + 1} · {row.scene === 'commission' ? '委托' : row.scene === 'research' ? '科研' : row.scene}</button>)}</div>
-    {selected && <>
-      <p className="muted">上传时间：{new Date(selected.created_at).toLocaleString()} · 完整分辨率 {selected.width}×{selected.height} · 红框标出当前物品。</p>
-      {!url && !error && <p role="status">正在通过模板管理连接读取原图…</p>}
-      {url && <>
-        <svg viewBox={`0 0 ${selected.width} ${selected.height}`} width="100%" role="img" aria-label={`${identity} 的完整奖励截图，红框标记物品位置`}>
-          <image href={url} width={selected.width} height={selected.height} />
-          <rect x={selected.bounds[0]} y={selected.bounds[1]} width={selected.bounds[2] - selected.bounds[0]} height={selected.bounds[3] - selected.bounds[1]} fill="none" stroke="#ff3b30" strokeWidth={3} />
-        </svg>
-        <p><a href={url} target="_blank" rel="noreferrer">打开完整原图</a> · <a href={url} download={`${identity}-${selected.sha256}.png`}>下载 PNG 原图</a></p>
+
+  return (
+    <section className="admin-screenshots">
+      <Text as="h3" variant="heading">原始截图</Text>
+      {rows.error && <Banner variant="error">{rows.error}</Banner>}
+      {error && <Banner variant="error">{error}</Banner>}
+      {!rows.loading && rows.data?.items.length === 0 && <Empty title="暂无原图" />}
+      <Tabs
+        value={selected ? keyFor(selected) : ''}
+        tabs={(rows.data?.items ?? []).map((row, index) => ({ value: keyFor(row), label: `截图 ${offset + index + 1} · ${row.scene === 'commission' ? '委托' : row.scene === 'research' ? '科研' : row.scene}` }))}
+        onValueChange={value => setChosen(rows.data?.items.find(row => keyFor(row) === value) ?? null)}
+        labels={{ scrollStart: '向左查看更多截图', scrollEnd: '向右查看更多截图' }}
+        indicatorClassName="motion-reduce:transition-none"
+      />
+      {selected && <>
+        <Text variant="secondary">{formatTime(selected.created_at)} · {selected.width} × {selected.height}</Text>
+        {!url && !error && <Text role="status">读取原图…</Text>}
+        {url && <>
+          <svg viewBox={`0 0 ${selected.width} ${selected.height}`} width="100%" role="img" aria-label={`${identity} 的完整奖励截图，红框标记物品位置`}>
+            <image href={url} width={selected.width} height={selected.height} />
+            <rect x={selected.bounds[0]} y={selected.bounds[1]} width={selected.bounds[2] - selected.bounds[0]} height={selected.bounds[3] - selected.bounds[1]} fill="none" stroke="var(--color-red-500)" strokeWidth={3} />
+          </svg>
+          <div className="admin-actions"><Link href={url} target="_blank" rel="noreferrer">打开原图</Link><Link href={url} download={`${identity}-${selected.sha256}.png`}>下载 PNG</Link></div>
+        </>}
       </>}
-    </>}
-    <div className="form-actions"><button type="button" className="ghost" disabled={!offset} onClick={() => { setChosen(null); setOffset(value => Math.max(0, value - 10)) }}>上一页原图</button><span className="muted">第 {offset / 10 + 1} 页</span><button type="button" className="ghost" disabled={(rows.data?.items.length ?? 0) < 10} onClick={() => { setChosen(null); setOffset(value => value + 10) }}>下一页原图</button></div>
-  </Card>
+      {(offset > 0 || (rows.data?.items.length ?? 0) === 10) && <Pagination page={offset / 10 + 1} perPage={10} hasNextPage={(rows.data?.items.length ?? 0) === 10} setPage={page => { setChosen(null); setOffset((page - 1) * 10) }} labels={{ previousPage: '上一页原图', nextPage: '下一页原图' }} controls="simple" />}
+    </section>
+  )
 }

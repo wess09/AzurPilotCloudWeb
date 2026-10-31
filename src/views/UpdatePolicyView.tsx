@@ -1,53 +1,35 @@
 import { useEffect, useState } from 'react'
+import { Banner } from '@cloudflare/kumo/components/banner'
+import { Button } from '@cloudflare/kumo/components/button'
+import { Switch } from '@cloudflare/kumo/components/switch'
 import { api } from '../api'
 import { Card, PublishBadge, useAction, useLoad } from '../ui'
 
-// 强制更新开关：保存后自动发布更新策略 Worker。
 export function UpdatePolicyView() {
   const load = useLoad(() => api.getUpdatePolicy(), [])
   const [force, setForce] = useState(false)
   const action = useAction()
   const [lastPublish, setLastPublish] = useState<Parameters<typeof PublishBadge>[0]['publish']>(null)
 
-  useEffect(() => {
-    if (load.data) setForce(load.data.force_update)
-  }, [load.data?.force_update])
+  useEffect(() => { if (load.data) setForce(load.data.force_update) }, [load.data?.force_update])
 
-  const save = () =>
-    action.run(async () => {
-      const res = await api.setUpdatePolicy(force)
-      setLastPublish(res.publish)
-      load.reload()
-      return `已保存并发布：force_update = ${res.force_update}`
-    })
+  const save = () => action.run(async () => {
+    const result = await api.setUpdatePolicy(force)
+    setLastPublish(result.publish)
+    load.reload()
+    return result.force_update ? '已开启强制更新' : '已关闭强制更新'
+  })
 
   return (
-    <Card title="更新策略">
-      {load.loading && <p className="muted">加载中…</p>}
-      {load.error && <p className="form-err">{load.error}</p>}
-      {load.data && (
-        <form
-          className="stack"
-          onSubmit={(e) => {
-            e.preventDefault()
-            void save()
-          }}
-        >
-          <label className="check">
-            <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
-            强制更新（force_update）——开启后客户端更新策略文档将要求强制更新
-          </label>
-          <div className="pills">
-            <PublishBadge publish={lastPublish} />
-          </div>
-          {action.message && <p className={action.message.kind === 'ok' ? 'form-ok' : 'form-err'}>{action.message.text}</p>}
-          <div className="row">
-            <button type="submit" disabled={action.running}>
-              {action.running ? '发布中…' : '保存并发布'}
-            </button>
-          </div>
-        </form>
-      )}
+    <Card title="客户端更新">
+      {load.loading && !load.data && <Banner variant="secondary">加载中…</Banner>}
+      {load.error && <Banner variant="error">{load.error}</Banner>}
+      {load.data && <form className="admin-form" onSubmit={event => { event.preventDefault(); void save() }}>
+        <Switch label="强制更新" checked={force} onCheckedChange={setForce} disabled={action.running} />
+        <PublishBadge publish={lastPublish} />
+        {action.message && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
+        <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running}>保存并发布</Button></div>
+      </form>}
     </Card>
   )
 }

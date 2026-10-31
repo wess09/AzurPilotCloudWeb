@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import { Badge } from '@cloudflare/kumo/components/badge'
+import { Surface } from '@cloudflare/kumo/components/surface'
+import { Text } from '@cloudflare/kumo/components/text'
 
 // 带加载与错误状态的通用数据拉取钩子。
 export function useLoad<T>(loader: () => Promise<T>, deps: unknown[], source: 'main' | 'templates' = 'main'): {
@@ -74,22 +77,22 @@ export function useAction(): {
 export function PublishBadge({ publish }: { publish: { success: boolean; skipped: boolean; error: string } | null | undefined }) {
   if (!publish) return null
   if (publish.error) {
-    return <span className="pill pill-err">发布失败：{publish.error}</span>
+    return <Badge variant="error">发布失败：{publish.error}</Badge>
   }
   if (publish.skipped) {
-    return <span className="pill pill-warn">已生成本地文件（未配置 Cloudflare，未上传）</span>
+    return <Badge variant="warning">仅本地生成</Badge>
   }
-  return <span className="pill pill-ok">已发布并通过读取确认</span>
+  return <Badge variant={publish.success ? 'success' : 'error'}>{publish.success ? '已发布' : '未发布'}</Badge>
 }
 
 export function Card({ title, children, extra }: { title: string; children: ReactNode; extra?: ReactNode }) {
   return (
-    <section className="card">
-      <header className="card-head">
-        <h2>{title}</h2>
+    <Surface className="admin-card">
+      <header className="admin-card-heading">
+        <Text as="h2" variant="heading">{title}</Text>
         {extra}
       </header>
-      {children}
-    </section>
+      <div className="admin-card-body">{children}</div>
+    </Surface>
   )
 }

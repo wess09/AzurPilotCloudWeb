@@ -1,4 +1,9 @@
-import { useEffect, useState } from 'react'
+import { startTransition, useEffect, useState, ViewTransition } from 'react'
+import { Sidebar, useSidebar } from '@cloudflare/kumo/components/sidebar'
+import { Button } from '@cloudflare/kumo/components/button'
+import { Text } from '@cloudflare/kumo/components/text'
+import { Banner } from '@cloudflare/kumo/components/banner'
+import { House, Megaphone, ArrowCircleUp, CalendarBlank, CloudArrowUp, SquaresFour, SignOut, ChartBar } from '@phosphor-icons/react'
 import { clearToken, getToken, setAuthErrorHandler } from './api'
 import { Login } from './views/Login'
 import { OverviewView } from './views/OverviewView'
@@ -6,35 +11,24 @@ import { AnnouncementView } from './views/AnnouncementView'
 import { UpdatePolicyView } from './views/UpdatePolicyView'
 import { MaintenanceView } from './views/MaintenanceView'
 import { PublishStatusView } from './views/PublishStatusView'
-import { Logo } from './ui'
 import { TemplateServiceView } from './views/TemplateServiceView'
+import { Logo } from './ui'
 
 type Section = 'overview' | 'announcement' | 'update-policy' | 'maintenance' | 'publish' | 'template-service'
 
-const SECTIONS: Array<{ key: Section; label: string }> = [
-  { key: 'overview', label: '概览' },
-  { key: 'announcement', label: '公告管理' },
-  { key: 'update-policy', label: '更新策略' },
-  { key: 'maintenance', label: '维护计划' },
-  { key: 'publish', label: '发布状态' },
-  { key: 'template-service', label: '模板服务' },
-]
-
-const SECTION_TITLES: Record<Section, string> = {
-  overview: '概览',
-  announcement: '公告管理',
-  'update-policy': '更新策略',
-  maintenance: '维护计划',
-  publish: '发布状态',
-  'template-service': '模板服务',
-}
+const SECTIONS = [
+  { key: 'overview', label: '概览', icon: House },
+  { key: 'announcement', label: '公告管理', icon: Megaphone },
+  { key: 'update-policy', label: '更新策略', icon: ArrowCircleUp },
+  { key: 'maintenance', label: '维护计划', icon: CalendarBlank },
+  { key: 'publish', label: '发布状态', icon: CloudArrowUp },
+  { key: 'template-service', label: '模板服务', icon: SquaresFour }
+] as const
 
 export function App() {
   const [authed, setAuthed] = useState(() => getToken() !== '')
-  const [section, setSection] = useState<Section>('overview')
   const [banner, setBanner] = useState<string | null>(null)
 
-  // API 层收到 401 时回到登录页（凭据失效或被撤销）。
   useEffect(() => {
     setAuthErrorHandler(() => {
       setBanner('管理凭据已失效，请重新登录')
@@ -42,63 +36,60 @@ export function App() {
     })
   }, [])
 
-  if (!authed) {
-    return <Login onLogin={() => { setBanner(null); setAuthed(true) }} />
-  }
+  if (!authed) return <Login errorMessage={banner} onLogin={() => { setBanner(null); setAuthed(true) }} />
 
-  const logout = () => {
-    clearToken()
-    setAuthed(false)
+  return (
+    <Sidebar.Provider defaultOpen collapsible="offcanvas" mobileBreakpoint={640} className="min-h-screen">
+      <AdminLayout banner={banner} onDismiss={() => setBanner(null)} onLogout={() => { clearToken(); setAuthed(false) }} />
+    </Sidebar.Provider>
+  )
+}
+
+function AdminLayout({ banner, onDismiss, onLogout }: { banner: string | null; onDismiss: () => void; onLogout: () => void }) {
+  const [section, setSection] = useState<Section>('overview')
+  const { setOpenMobile } = useSidebar()
+  const navigate = (next: Section) => {
+    startTransition(() => setSection(next))
+    setOpenMobile(false)
   }
 
   return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="brand">
-          <Logo />
-          <strong>AzurPilot</strong>
-          <span className="crumb">管理后台 / {SECTION_TITLES[section]}</span>
-        </div>
-        <button type="button" className="ghost" onClick={logout}>
-          退出登录
-        </button>
-      </header>
-
-      <div className="layout">
-        <aside className="sidebar">
-          <nav>
-            <a className="public-site-link" href="https://stats.azurpilot.com">公开统计网站 ↗</a>
-            <p className="nav-group">运营管理</p>
-            {SECTIONS.map((s) => (
-              <button
-                key={s.key}
-                type="button"
-                className={section === s.key ? 'nav-item active' : 'nav-item'}
-                onClick={() => setSection(s.key)}
-              >
-                <span>{s.label}</span>
-              </button>
-            ))}
-          </nav>
-        </aside>
-
-        <main className="content">
-          {banner && (
-            <p className="banner">
-              {banner}{' '}
-              <button type="button" className="ghost" onClick={() => setBanner(null)}>
-                关闭
-              </button>
-            </p>
-          )}
-          {section === 'overview' && <OverviewView onNavigate={(s) => setSection(s as Section)} />}
-          {section === 'announcement' && <AnnouncementView />}
-          {section === 'update-policy' && <UpdatePolicyView />}
-          {section === 'maintenance' && <MaintenanceView />}
-          {section === 'publish' && <PublishStatusView />}
-          {section === 'template-service' && <TemplateServiceView />}
-        </main>
-      </div>
-    </div>
+    <>
+      <Sidebar>
+        <Sidebar.Header>
+          <div className="admin-brand"><Logo /><Text as="span" variant="heading">AzurPilot</Text></div>
+        </Sidebar.Header>
+        <Sidebar.Content>
+          <Sidebar.Group>
+            <Sidebar.Menu>
+              {SECTIONS.map(({ key, label, icon: Icon }) => (
+                <Sidebar.MenuButton key={key} active={section === key} icon={<Icon size={18} />} onClick={() => navigate(key)}>{label}</Sidebar.MenuButton>
+              ))}
+            </Sidebar.Menu>
+          </Sidebar.Group>
+        </Sidebar.Content>
+        <Sidebar.Footer>
+          <Sidebar.Menu>
+            <Sidebar.MenuButton href="https://stats.azurpilot.com" target="_blank" icon={<ChartBar size={18} />}>公开统计</Sidebar.MenuButton>
+            <Sidebar.MenuButton onClick={onLogout} icon={<SignOut size={18} />}>退出登录</Sidebar.MenuButton>
+          </Sidebar.Menu>
+        </Sidebar.Footer>
+      </Sidebar>
+      <main className="admin-content">
+        <div className="admin-mobile-navigation"><Sidebar.Trigger aria-label="切换导航" /><Logo size={28} /></div>
+        {banner && <Banner variant="error" title={banner} action={<Button variant="ghost" onClick={onDismiss}>关闭</Button>} />}
+        <ViewTransition key={section} name="admin-page" enter="auto" share="auto" default="none">
+          <div className="admin-page">
+            <Text as="h1" variant="heading" size="lg">{SECTIONS.find(item => item.key === section)?.label}</Text>
+            {section === 'overview' && <OverviewView onNavigate={() => navigate('publish')} />}
+            {section === 'announcement' && <AnnouncementView />}
+            {section === 'update-policy' && <UpdatePolicyView />}
+            {section === 'maintenance' && <MaintenanceView />}
+            {section === 'publish' && <PublishStatusView />}
+            {section === 'template-service' && <TemplateServiceView />}
+          </div>
+        </ViewTransition>
+      </main>
+    </>
   )
 }
