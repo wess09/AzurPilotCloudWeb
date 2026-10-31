@@ -3,6 +3,7 @@ import { Sidebar, useSidebar } from '@cloudflare/kumo/components/sidebar'
 import { Button } from '@cloudflare/kumo/components/button'
 import { Text } from '@cloudflare/kumo/components/text'
 import { Banner } from '@cloudflare/kumo/components/banner'
+import { Badge } from '@cloudflare/kumo/components/badge'
 import { House, Megaphone, ArrowCircleUp, CalendarBlank, CloudArrowUp, SquaresFour, SignOut, ChartBar } from '@phosphor-icons/react'
 import { clearToken, getToken, setAuthErrorHandler } from './api'
 import { Login } from './views/Login'
@@ -13,6 +14,7 @@ import { MaintenanceView } from './views/MaintenanceView'
 import { PublishStatusView } from './views/PublishStatusView'
 import { TemplateServiceView } from './views/TemplateServiceView'
 import { Logo } from './ui'
+import { isAdminPreview } from './preview-mode'
 
 type Section = 'overview' | 'announcement' | 'update-policy' | 'maintenance' | 'publish' | 'template-service'
 
@@ -26,7 +28,7 @@ const SECTIONS = [
 ] as const
 
 export function App() {
-  const [authed, setAuthed] = useState(() => getToken() !== '')
+  const [authed, setAuthed] = useState(() => isAdminPreview() || getToken() !== '')
   const [banner, setBanner] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,13 +42,16 @@ export function App() {
 
   return (
     <Sidebar.Provider defaultOpen collapsible="offcanvas" mobileBreakpoint={640} className="h-dvh overflow-hidden">
-      <AdminLayout banner={banner} onDismiss={() => setBanner(null)} onLogout={() => { clearToken(); setAuthed(false) }} />
+      <AdminLayout banner={banner} onDismiss={() => setBanner(null)} onLogout={() => { if (isAdminPreview()) { window.location.assign('/'); return }; clearToken(); setAuthed(false) }} />
     </Sidebar.Provider>
   )
 }
 
 function AdminLayout({ banner, onDismiss, onLogout }: { banner: string | null; onDismiss: () => void; onLogout: () => void }) {
-  const [section, setSection] = useState<Section>('overview')
+  const [section, setSection] = useState<Section>(() => {
+    const selected = isAdminPreview() ? new URLSearchParams(window.location.search).get('section') : null
+    return SECTIONS.find(item => item.key === selected)?.key ?? 'overview'
+  })
   const { setOpenMobile } = useSidebar()
   const navigate = (next: Section) => {
     startTransition(() => setSection(next))
@@ -57,7 +62,7 @@ function AdminLayout({ banner, onDismiss, onLogout }: { banner: string | null; o
     <>
       <Sidebar>
         <Sidebar.Header>
-          <div className="admin-brand"><Logo /><Text as="span" variant="heading">AzurPilot</Text></div>
+          <div className="admin-brand"><Logo /><Text as="span" variant="heading">AzurPilot</Text>{isAdminPreview() && <Badge variant="warning">预览数据</Badge>}</div>
         </Sidebar.Header>
         <Sidebar.Content>
           <Sidebar.Group>
@@ -75,7 +80,7 @@ function AdminLayout({ banner, onDismiss, onLogout }: { banner: string | null; o
         </Sidebar.Content>
         <Sidebar.Footer>
           <Sidebar.Menu>
-            <Sidebar.MenuButton onClick={onLogout} icon={<SignOut size={18} />}>退出登录</Sidebar.MenuButton>
+            <Sidebar.MenuButton onClick={onLogout} icon={<SignOut size={18} />}>{isAdminPreview() ? '退出预览' : '退出登录'}</Sidebar.MenuButton>
           </Sidebar.Menu>
         </Sidebar.Footer>
       </Sidebar>

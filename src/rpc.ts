@@ -1,3 +1,5 @@
+import { isAdminPreview } from './preview-mode'
+
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message) }
   get isAuthError(): boolean { return this.status === 401 }
@@ -104,6 +106,10 @@ export class RPCClient {
   }
 
   async request<T>(method: string, params: unknown = {}): Promise<T> {
+    if (process.env.NODE_ENV === 'development' && isAdminPreview()) {
+      const { previewRequest } = await import('./preview/admin-data')
+      return await previewRequest(this.source, method, params) as T
+    }
     await this.connect()
     const socket = this.socket
     if (!socket || !this.authenticated) throw new ApiError(0, 'DISCONNECTED', '管理连接已断开')
@@ -116,6 +122,7 @@ export class RPCClient {
   }
 
   async state<T>(): Promise<T> {
+    if (process.env.NODE_ENV === 'development' && isAdminPreview()) return this.request<T>('state.subscribe')
     if (this.snapshot !== undefined) return this.snapshot as T
     if (!this.subscription) this.subscription = this.request<unknown>('state.subscribe').then(value => { this.snapshot = value; this.changed(); return value }).catch(error => { this.subscription = null; throw error })
     return await this.subscription as T
