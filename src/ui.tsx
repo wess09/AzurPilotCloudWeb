@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Badge } from '@cloudflare/kumo/components/badge'
-import { Surface } from '@cloudflare/kumo/components/surface'
+import { LayerCard } from '@cloudflare/kumo/components/layer-card'
 import { Text } from '@cloudflare/kumo/components/text'
 
 // 带加载与错误状态的通用数据拉取钩子。
@@ -87,12 +87,12 @@ export function PublishBadge({ publish }: { publish: { success: boolean; skipped
 
 export function Card({ title, children, extra }: { title: string; children: ReactNode; extra?: ReactNode }) {
   return (
-    <Surface className="admin-card">
-      <header className="admin-card-heading">
+    <LayerCard className="admin-card">
+      <LayerCard.Secondary className="admin-card-heading">
         <Text as="h2" variant="heading">{title}</Text>
         {extra}
-      </header>
-      <div className="admin-card-body">{children}</div>
-    </Surface>
+      </LayerCard.Secondary>
+      <LayerCard.Primary className="admin-card-body">{children}</LayerCard.Primary>
+    </LayerCard>
   )
 }

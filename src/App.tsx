@@ -39,7 +39,7 @@ export function App() {
   if (!authed) return <Login errorMessage={banner} onLogin={() => { setBanner(null); setAuthed(true) }} />
 
   return (
-    <Sidebar.Provider defaultOpen collapsible="offcanvas" mobileBreakpoint={640} className="min-h-screen">
+    <Sidebar.Provider defaultOpen collapsible="offcanvas" mobileBreakpoint={640} className="h-dvh overflow-hidden">
       <AdminLayout banner={banner} onDismiss={() => setBanner(null)} onLogout={() => { clearToken(); setAuthed(false) }} />
     </Sidebar.Provider>
   )
@@ -67,10 +67,14 @@ function AdminLayout({ banner, onDismiss, onLogout }: { banner: string | null; o
               ))}
             </Sidebar.Menu>
           </Sidebar.Group>
+          <Sidebar.Group>
+            <Sidebar.Menu>
+              <Sidebar.MenuButton href="https://stats.azurpilot.com" target="_blank" icon={<ChartBar size={18} />}>公开统计</Sidebar.MenuButton>
+            </Sidebar.Menu>
+          </Sidebar.Group>
         </Sidebar.Content>
         <Sidebar.Footer>
           <Sidebar.Menu>
-            <Sidebar.MenuButton href="https://stats.azurpilot.com" target="_blank" icon={<ChartBar size={18} />}>公开统计</Sidebar.MenuButton>
             <Sidebar.MenuButton onClick={onLogout} icon={<SignOut size={18} />}>退出登录</Sidebar.MenuButton>
           </Sidebar.Menu>
         </Sidebar.Footer>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@cloudflare/kumo/components/button'
 import { Input } from '@cloudflare/kumo/components/input'
-import { Surface } from '@cloudflare/kumo/components/surface'
+import { LayerCard } from '@cloudflare/kumo/components/layer-card'
 import { Text } from '@cloudflare/kumo/components/text'
 import { Banner } from '@cloudflare/kumo/components/banner'
 import { api, ApiError, getToken, setToken } from '../api'
@@ -29,14 +29,19 @@ export function Login({ onLogin, errorMessage }: { onLogin: () => void; errorMes
 
   return (
     <main className="admin-login">
-      <Surface className="admin-login-card">
-        <div className="admin-brand"><Logo size={36} /><Text as="h1" variant="heading" size="lg">AzurPilot 管理后台</Text></div>
-        <form className="admin-form" onSubmit={event => { event.preventDefault(); void connect() }}>
-          <Input label="管理凭据" type="password" name="admin-token" autoComplete="current-password" value={token} onChange={event => setLocalToken(event.target.value)} autoFocus required />
-          {(error || errorMessage) && <Banner variant="error">{error || errorMessage}</Banner>}
-          <Button type="submit" variant="primary" loading={busy} disabled={!token.trim()}>登录</Button>
-        </form>
-      </Surface>
+      <div className="admin-login-panel">
+        <div className="admin-login-brand"><Logo size={40} /><Text as="span" variant="heading" size="lg">AzurPilot</Text></div>
+        <LayerCard>
+          <LayerCard.Secondary><Text as="h1" variant="heading">登录管理后台</Text></LayerCard.Secondary>
+          <LayerCard.Primary>
+            <form className="admin-form" onSubmit={event => { event.preventDefault(); void connect() }}>
+              <Input label="管理凭据" type="password" name="admin-token" autoComplete="current-password" value={token} onChange={event => setLocalToken(event.target.value)} autoFocus required />
+              {(error || errorMessage) && <Banner variant="error">{error || errorMessage}</Banner>}
+              <Button type="submit" variant="primary" className="w-full justify-center" loading={busy} disabled={!token.trim()}>登录</Button>
+            </form>
+          </LayerCard.Primary>
+        </LayerCard>
+      </div>
     </main>
   )
 }

@@ -13,13 +13,13 @@ body {
   font-size: 14px;
 }
 code { font-size: 0.9em; overflow-wrap: anywhere; }
-.admin-content { flex: 1; min-width: 0; padding: 28px 32px; }
+.admin-content { flex: 1; min-width: 0; height: 100%; overflow-y: auto; padding: 28px 32px; }
 .admin-brand { display: flex; align-items: center; gap: 12px; padding: 8px; }
 .admin-mobile-navigation { display: none; }
 .admin-page { display: grid; gap: 24px; min-width: 0; }
 .admin-page > h1 { margin: 0; }
-.admin-card { padding: 16px 20px; min-width: 0; }
-.admin-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.admin-card { min-width: 0; }
+.admin-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .admin-card-body { display: grid; gap: 16px; min-width: 0; }
 .admin-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .admin-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 24px; }
@@ -35,8 +35,8 @@ code { font-size: 0.9em; overflow-wrap: anywhere; }
 .admin-dialog { display: grid; gap: 20px; padding: 24px; }
 .admin-dialog .admin-card-heading { margin: 0; }
 .admin-login { display: grid; place-items: center; min-height: 100dvh; padding: 24px; }
-.admin-login-card { width: 100%; max-width: 448px; padding: 24px 32px; display: grid; gap: 28px; }
-.admin-login-card .admin-brand { padding: 0; }
+.admin-login-panel { width: 100%; max-width: 384px; display: grid; gap: 24px; }
+.admin-login-brand { display: flex; align-items: center; justify-content: center; gap: 12px; }
 .admin-template-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
 .admin-template-metrics > div { display: grid; gap: 4px; }
 .admin-template-name { display: flex; align-items: center; gap: 8px; min-width: 160px; }
@@ -56,9 +56,7 @@ code { font-size: 0.9em; overflow-wrap: anywhere; }
   .admin-content { padding: 16px; }
   .admin-mobile-navigation { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
   .admin-summary-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .admin-card { padding: 16px; }
   .admin-page { gap: 20px; }
-  .admin-login-card { padding: 24px; }
   .admin-template-metrics { gap: 12px; }
   .admin-mapping-fields { grid-template-columns: minmax(0, 1fr); }
 }

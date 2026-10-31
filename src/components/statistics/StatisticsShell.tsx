@@ -18,7 +18,7 @@ export function StatisticsShell({
 }: {
   children: React.ReactNode
 }) {
-  return <LinkProvider component={AppLink}><Sidebar.Provider defaultOpen collapsible="offcanvas" mobileBreakpoint={640} className="min-h-screen"><Layout>{children}</Layout></Sidebar.Provider></LinkProvider>
+  return <LinkProvider component={AppLink}><Sidebar.Provider defaultOpen collapsible="offcanvas" mobileBreakpoint={640} className="h-dvh overflow-hidden"><Layout>{children}</Layout></Sidebar.Provider></LinkProvider>
 }
 
 function Layout({children}:{children:React.ReactNode}) {
