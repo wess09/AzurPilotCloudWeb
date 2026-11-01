@@ -17,7 +17,7 @@ import { Card, useAction, useLoad } from '../ui'
 import { TemplateScreenshots } from './TemplateScreenshots'
 import { formatTime } from './AnnouncementView'
 import { ItemIdentityFields, type ItemIdentity } from '../components/ItemIdentityFields'
-import { catalogMetadata, completeMetadata } from '../item-metadata'
+import { catalogMetadata, completeMetadata, emptyMetadata } from '../item-metadata'
 import catalog from '../data/catalog.json'
 
 type Mapping = ItemIdentity
@@ -52,6 +52,10 @@ export function TemplateServiceView() {
   const [mapping, setMapping] = useState<Mapping>({ item_id: '', name: '', tag: '' })
   const [formal, setFormal] = useState<Mapping>({ item_id: '', name: '', tag: '' })
   const [file, setFile] = useState<File | null>(null)
+  const [editingItem, setEditingItem] = useState<Mapping | null>(null)
+  const [creatingItem, setCreatingItem] = useState(false)
+  const [itemSearch, setItemSearch] = useState('')
+  const [itemPage, setItemPage] = useState(1)
   const status = useLoad(() => templateRPC.state<Status>(), [pulse], 'templates')
   const rows = useLoad(() => templateRPC.request<{ items: Template[] }>('templates.list', { limit: 50, offset, discarded: filter === 'discarded', ...(filter && filter !== 'discarded' ? { kind: filter } : {}) }), [filter, offset, pulse], 'templates')
   const releases = useLoad(() => templateRPC.request<{ items: Release[] }>('releases.list'), [pulse], 'templates')
@@ -62,6 +66,7 @@ export function TemplateServiceView() {
     for (const item of formalItems.data ?? []) items.set(item.item_id, { ...item, metadata: item.metadata ?? items.get(item.item_id)?.metadata })
     return Array.from(items.values()).sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
   }, [formalItems.data])
+  const filteredItems = knownItems.filter(item => `${item.name} ${item.item_id} ${item.metadata?.game_id ?? ''}`.toLocaleLowerCase().includes(itemSearch.trim().toLocaleLowerCase()))
   const action = useAction()
   const refresh = () => setPulse(value => value + 1)
   const errors = [...new Set([status.error, rows.error, releases.error, formalItems.error].filter((error): error is string => Boolean(error)))]
@@ -102,11 +107,18 @@ export function TemplateServiceView() {
     refresh()
     return `模板 ${formal.item_id} 已导入，等待发布`
   })
+  const saveItem = () => action.run(async () => {
+    if (!editingItem) throw new Error('请选择物品')
+    await templateRPC.request('items.save', { item_id: editingItem.item_id, name: editingItem.name, metadata: editingItem.metadata })
+    setEditingItem(null)
+    refresh()
+    return '物品属性已保存，等待发布'
+  })
 
   return (
     <>
       {errors.map(error => <Banner key={error} variant="error" description={error} action={<Button onClick={reconnect}>重连</Button>} />)}
-      {action.message && !selected && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
+      {action.message && !selected && !editingItem && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
       {status.data && <Card title="分发状态" extra={<div className="admin-actions"><Badge variant="secondary">版本 {status.data.revision}</Badge><Button onClick={refresh}>刷新</Button><Button variant="primary" loading={action.running} onClick={() => void publish()}>发布映射{status.data.drafts ? `（${status.data.drafts}）` : ''}</Button></div>}>
         <div className="admin-template-metrics">
           <div><Text variant="secondary">映射草稿</Text><Text>{status.data.drafts}</Text></div>
@@ -119,7 +131,18 @@ export function TemplateServiceView() {
         {status.data.release?.error && <Banner variant="error">{status.data.release.error}</Banner>}
         {status.data.last_delivery?.last_error && <Banner variant="error">同步重试中：{status.data.last_delivery.last_error}</Banner>}
       </Card>}
-      <Tabs value={tab} onValueChange={value => { setTab(value); setFile(null) }} tabs={[{ value: 'templates', label: '模板' }, { value: 'import', label: '导入模板' }, { value: 'releases', label: '发布记录' }]} indicatorClassName="motion-reduce:transition-none" />
+      <Tabs value={tab} onValueChange={value => { setTab(value); setFile(null) }} tabs={[{ value: 'templates', label: '模板' }, { value: 'items', label: '物品' }, { value: 'import', label: '导入模板' }, { value: 'releases', label: '发布记录' }]} indicatorClassName="motion-reduce:transition-none" />
+      {tab === 'items' && <Card title="物品目录" extra={<Button variant="primary" onClick={() => { setCreatingItem(true); setEditingItem({ item_id: '', name: '', tag: '', metadata: emptyMetadata() }) }}>新建物品</Button>}>
+        <Input label="搜索物品" placeholder="名称、正式 ID 或游戏 ID" value={itemSearch} onChange={event => { setItemSearch(event.target.value); setItemPage(1) }} />
+        {filteredItems.length ? <div className="admin-table-scroll"><Table>
+          <Table.Header><Table.Row><Table.Head>名称</Table.Head><Table.Head>正式 ID</Table.Head><Table.Head>分类</Table.Head><Table.Head>科研期数</Table.Head><Table.Head>等级</Table.Head><Table.Head>所属版本</Table.Head><Table.Head>操作</Table.Head></Table.Row></Table.Header>
+          <Table.Body>{filteredItems.slice((itemPage - 1) * 50, itemPage * 50).map(item => <Table.Row key={item.item_id}>
+            <Table.Cell>{item.name}</Table.Cell><Table.Cell>{item.item_id}</Table.Cell><Table.Cell>{catalog.categories.find(category => category.id === item.metadata?.category)?.name ?? '未设置'}</Table.Cell><Table.Cell>{item.metadata?.series ? `第 ${item.metadata.series} 期` : '—'}</Table.Cell><Table.Cell>{item.metadata?.tier || '—'}</Table.Cell><Table.Cell>{item.metadata?.version || '—'}</Table.Cell>
+            <Table.Cell><Button variant="ghost" onClick={() => { setCreatingItem(false); setEditingItem(structuredClone(item)) }}>编辑</Button></Table.Cell>
+          </Table.Row>)}</Table.Body>
+        </Table></div> : <Empty title="没有匹配的物品" />}
+        {filteredItems.length > 50 && <Pagination page={itemPage} setPage={setItemPage} perPage={50} totalCount={filteredItems.length} labels={{ navigation: '物品分页', previousPage: '上一页物品', nextPage: '下一页物品' }}><Pagination.Controls controls="simple" /></Pagination>}
+      </Card>}
       {tab === 'templates' && <Card title="模板列表" extra={<Select aria-label="模板类型" value={filter} items={{ temporary: '未知模板', formal: '正式模板', '': '全部模板', discarded: '已丢弃' }} onValueChange={value => { setFilter(value ?? ''); setOffset(0); setSelected(null) }} />}>
         {rows.data?.items.length ? <div className="admin-table-scroll"><Table>
           <Table.Header><Table.Row><Table.Head>名称</Table.Head><Table.Head>编号</Table.Head><Table.Head>状态</Table.Head><Table.Head>匹配次数</Table.Head><Table.Head>原图</Table.Head><Table.Head>操作</Table.Head></Table.Row></Table.Header>
@@ -155,12 +178,26 @@ export function TemplateServiceView() {
           {selected && <>
             <Text variant="secondary">{selected.id}</Text>
             {!selected.discarded && selected.id.startsWith('U-') && <form className="admin-form" onSubmit={event => { event.preventDefault(); void saveMapping() }}>
-              <ItemIdentityFields value={mapping} items={knownItems} onChange={setMapping} />
+              <ItemIdentityFields key={selected.id} value={mapping} items={knownItems} onChange={setMapping} />
               <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!mapping.item_id.trim() || !mapping.name.trim() || !completeMetadata(mapping.metadata)}>保存映射草稿</Button></div>
+            </form>}
+            {!selected.discarded && !selected.id.startsWith('U-') && <form className="admin-form" onSubmit={event => { event.preventDefault(); void action.run(async () => { await templateRPC.request('items.save', { item_id: mapping.item_id, name: mapping.name, metadata: mapping.metadata }); refresh(); return '物品属性已保存，等待发布' }) }}>
+              <ItemIdentityFields key={selected.id} fixedIdentity value={mapping} items={knownItems} onChange={setMapping} />
+              <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!mapping.name.trim() || !completeMetadata(mapping.metadata)}>保存物品属性</Button></div>
             </form>}
             {action.message && <Banner variant={action.message.kind === 'err' ? 'error' : 'secondary'}>{action.message.text}</Banner>}
             <TemplateScreenshots key={selected.id} identity={selected.id} />
           </>}
+        </Dialog>
+      </Dialog.Root>
+      <Dialog.Root open={editingItem !== null} onOpenChange={open => { if (!open && !action.running) setEditingItem(null) }}>
+        <Dialog size="xl" className="admin-dialog">
+          <div className="admin-card-heading"><Dialog.Title>{creatingItem ? '新建物品' : '编辑物品'}</Dialog.Title><Button variant="ghost" shape="square" aria-label="关闭物品" disabled={action.running} onClick={() => setEditingItem(null)}><X size={18} /></Button></div>
+          {editingItem && <form className="admin-form" onSubmit={event => { event.preventDefault(); void saveItem() }}>
+            <ItemIdentityFields key={creatingItem ? 'create-item' : editingItem.item_id} fixedIdentity={!creatingItem} includeTag={false} initialMode="new" value={editingItem} items={knownItems} onChange={setEditingItem} />
+            {action.message?.kind === 'err' && <Banner variant="error">{action.message.text}</Banner>}
+            <div className="admin-actions"><Button type="submit" variant="primary" loading={action.running} disabled={!editingItem.item_id.trim() || !editingItem.name.trim() || !completeMetadata(editingItem.metadata)}>保存物品</Button></div>
+          </form>}
         </Dialog>
       </Dialog.Root>
       <Dialog.Root open={discarding !== null} onOpenChange={open => { if (!open && !action.running) setDiscarding(null) }}>

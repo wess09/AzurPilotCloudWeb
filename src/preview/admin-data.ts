@@ -40,6 +40,7 @@ const templates: Template[] = [
   { id: 'Cubes', canonical_id: 'Cubes', name: '心智魔方', tag: 'resource', kind: 'formal', hits: 2486, image_base64: icons.cube, screenshot_count: 0, draft: null },
   { id: 'BlueprintAgir', canonical_id: 'BlueprintAgir', name: '埃吉尔蓝图', tag: 'blueprint', kind: 'formal', hits: 1328, image_base64: icons.agir, screenshot_count: 0, draft: null }
 ]
+const itemDefinitions = new Map<string, Mapping>()
 const releases = [
   { revision: 24, status: 'deployed', note: '科研蓝图模板更新', error: '', created_at: time(-15) },
   { revision: 23, status: 'deployed', note: '委托奖励映射更新', error: '', created_at: time(-90) },
@@ -75,7 +76,18 @@ export async function previewRequest(source: 'main' | 'templates', method: strin
     }
   } else {
     switch (method) {
-      case 'items.list': return { items: templates.filter(row => row.kind === 'formal' && row.metadata).slice(Number(values.offset ?? 0), Number(values.offset ?? 0) + Number(values.limit ?? 200)).map(row => ({ item_id: row.canonical_id, name: row.name, tag: row.tag, metadata: row.metadata })) }
+      case 'items.list': {
+        const all = new Map<string, Mapping>(templates.filter(row => row.kind === 'formal' && row.metadata).map(row => [row.canonical_id, { item_id: row.canonical_id, name: row.name, tag: row.tag, metadata: row.metadata }]))
+        for (const [id, item] of itemDefinitions) all.set(id, item)
+        return { items: Array.from(all.values()).sort((a, b) => a.item_id.localeCompare(b.item_id)).slice(Number(values.offset ?? 0), Number(values.offset ?? 0) + Number(values.limit ?? 200)) }
+      }
+      case 'items.save': {
+        const item = { item_id: text('item_id'), name: text('name'), tag: '', metadata: values.metadata as Mapping['metadata'] }
+        itemDefinitions.set(item.item_id, item)
+        for (const row of templates) if (row.canonical_id === item.item_id) { row.name = item.name; row.metadata = item.metadata }
+        result = { saved: true, publication_pending: true }
+        break
+      }
       case 'templates.list': {
         const filtered = templates.filter(row => Boolean(row.discarded) === Boolean(values.discarded) && (!values.kind || row.kind === values.kind))
         const offset = Number(values.offset ?? 0)
