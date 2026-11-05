@@ -1,13 +1,15 @@
 import { z } from 'zod'
 
-const count = z.number().int().nonnegative()
+// Zod's .int() also enforces the JS safe-integer limit, which CL1 totals can exceed.
+const integer = z.number().refine(Number.isInteger)
+const count = integer.nonnegative()
 const metricsSchema = z.object({
   battle_count: count,
   battle_rounds: count,
   akashi_encounters: count,
   akashi_ap: count,
   ap_cost: count,
-  net_ap: z.number().int(),
+  net_ap: integer,
   akashi_probability: z.number(),
   average_ap: z.number(),
   cycle_efficiency: z.number()
